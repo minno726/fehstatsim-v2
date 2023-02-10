@@ -1,5 +1,3 @@
-use std::array;
-
 use rand::{prelude::Distribution, rngs::SmallRng, Rng, SeedableRng};
 
 use crate::{
@@ -246,13 +244,14 @@ fn make_session(
         banner.has_charges && status.focus_charges >= 3,
     );
 
-    array::from_fn(|_| {
+    let mut gen = || {
         let pool = pool_dist.sample(rng);
         let color_dist = cache.get_color_dist(pool);
         let color = color_dist.sample(rng);
 
         (pool, color)
-    })
+    };
+    [gen(), gen(), gen(), gen(), gen()]
 }
 
 fn get_color_dist(pool_sizes: [u8; 4]) -> WeightedIndexColor {
