@@ -35,6 +35,10 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
         pity_count: 0,
         focus_charges: 0,
     };
+    let has_common_unit = goal
+        .units
+        .iter()
+        .any(|unit| unit.pools.contains(Pool::Common));
     'sim: loop {
         let mut num_pulled = 0;
         let session = make_session(banner, &status);
@@ -60,11 +64,13 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
                     _ => status.focus_charges,
                 };
 
-                let unit_index =
-                    rand::thread_rng().gen_range(0..banner.pool_sizes(pool)[color as usize]);
-                goal.pull(pool, color, unit_index);
-                if goal.finished() {
-                    break 'sim;
+                if has_common_unit || pool != Pool::Common {
+                    let unit_index =
+                        rand::thread_rng().gen_range(0..banner.pool_sizes(pool)[color as usize]);
+                    goal.pull(pool, color, unit_index);
+                    if goal.finished() {
+                        break 'sim;
+                    }
                 }
             }
         }
