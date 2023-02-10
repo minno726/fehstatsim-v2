@@ -14,5 +14,7 @@ harness = false
 
 [dependencies]
 enumset = "1.0.12"
+fxhash = "0.2.1"
 itertools = "0.10.5"
+memoize = "0.4.0"
 rand = { version ="0.8.5", features = ["small_rng"] }

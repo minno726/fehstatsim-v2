@@ -34,7 +34,7 @@ impl UnitCountGoal {
             .filter(|unit| unit.color == color && unit.pools.contains(pool) && unit.copies > 0)
             .enumerate()
         {
-            if idx == unit_index.into() {
+            if idx as u8 == unit_index {
                 unit.copies -= 1;
                 return;
             }
