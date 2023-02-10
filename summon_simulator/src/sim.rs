@@ -1,4 +1,5 @@
-use rand::{prelude::Distribution, rngs::SmallRng, Rng, SeedableRng};
+use rand::{prelude::Distribution, Rng, SeedableRng};
+use rand_xoshiro::Xoshiro128Plus;
 
 use crate::{
     banner::GenericBanner,
@@ -118,7 +119,7 @@ fn sim_until_goal(
         .units
         .iter()
         .any(|unit| unit.pools.contains(Pool::Common));
-    let mut rng = SmallRng::from_rng(&mut rand::thread_rng()).unwrap();
+    let mut rng = Xoshiro128Plus::from_rng(&mut rand::thread_rng()).unwrap();
     'sim: loop {
         let mut num_pulled = 0;
         let session = make_session(banner, &status, &mut rng, cache);
@@ -189,7 +190,7 @@ fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal, cache: &Distributio
     };
     let mut num_goal_units_pulled = 0;
     let is_common_unit = goal.pools.contains(Pool::Common);
-    let mut rng = SmallRng::from_rng(&mut rand::thread_rng()).unwrap();
+    let mut rng = Xoshiro128Plus::from_rng(&mut rand::thread_rng()).unwrap();
     loop {
         let mut num_pulled = 0;
         let session = make_session(banner, &status, &mut rng, cache);
@@ -236,7 +237,7 @@ fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal, cache: &Distributio
 fn make_session(
     banner: &GenericBanner,
     status: &Status,
-    rng: &mut SmallRng,
+    rng: &mut impl Rng,
     cache: &DistributionCache,
 ) -> [(Pool, Color); 5] {
     let pool_dist = cache.get_pool_dist(
