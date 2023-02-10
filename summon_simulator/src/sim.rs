@@ -18,6 +18,32 @@ struct Status {
     focus_charges: u32,
 }
 
+impl Status {
+    fn update(&mut self, pool: Pool, session_orb_count: u32) {
+        self.total_pulled += 1;
+        self.orbs_spent += match session_orb_count {
+            1 => 5,
+            2..=4 => 4,
+            5 => 3,
+            _ => panic!("Invalid num_pulled"),
+        };
+
+        // Pity rate: reset for a focus, subtract 2% worth for off-focus, increment otherwise
+        self.pity_count = match pool {
+            Pool::Focus => 0,
+            Pool::Fivestar => self.pity_count.saturating_sub(20),
+            _ => self.pity_count + 1,
+        };
+
+        // Focus charges: reset for a focus unit while charges are active, increment for off-focus
+        self.focus_charges = match (pool, self.focus_charges) {
+            (Pool::Fivestar, _) => (self.focus_charges + 1).min(3),
+            (Pool::Focus, 3) => 0,
+            _ => self.focus_charges,
+        };
+    }
+}
+
 pub fn sim(banner: &GenericBanner, goal: &Goal, iters: u32) -> FrequencyCounter {
     match goal {
         Goal::Quantity(goal) => sim_until_goal_many(banner, goal, iters),
@@ -56,27 +82,7 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
         for (i, &(pool, color)) in session.iter().enumerate() {
             if goal.colors().contains(color) || (num_pulled == 0 && i == 4) {
                 num_pulled += 1;
-                status.total_pulled += 1;
-                status.orbs_spent += match num_pulled {
-                    1 => 5,
-                    2..=4 => 4,
-                    5 => 3,
-                    _ => panic!("Invalid num_pulled"),
-                };
-
-                // Pity rate: reset for a focus, subtract 2% worth for off-focus, increment otherwise
-                status.pity_count = match pool {
-                    Pool::Focus => 0,
-                    Pool::Fivestar => status.pity_count.saturating_sub(20),
-                    _ => status.pity_count + 1,
-                };
-
-                // Focus charges: reset for a focus unit while charges are active, increment for off-focus
-                status.focus_charges = match (pool, status.focus_charges, banner.has_charges) {
-                    (Pool::Fivestar, _, true) => (status.focus_charges + 1).min(3),
-                    (Pool::Focus, 3, true) => 0,
-                    _ => status.focus_charges,
-                };
+                status.update(pool, num_pulled);
 
                 if has_common_unit || pool != Pool::Common {
                     let unit_index = rng.gen_range(0..banner.pool_sizes(pool)[color as usize]);
@@ -149,26 +155,12 @@ pub fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal) -> u32 {
                 4 => 3,
                 _ => panic!("Invalid num_pulled"),
             };
-            if status.orbs_spent + next_orb_cost <= goal.limit
-                && (goal.color == color || (num_pulled == 0 && i == 4))
-            {
+            if status.orbs_spent + next_orb_cost > goal.limit {
+                break;
+            }
+            if goal.color == color || (num_pulled == 0 && i == 4) {
                 num_pulled += 1;
-                status.total_pulled += 1;
-                status.orbs_spent += next_orb_cost;
-
-                // Pity rate: reset for a focus, subtract 2% worth for off-focus, increment otherwise
-                status.pity_count = match pool {
-                    Pool::Focus => 0,
-                    Pool::Fivestar => status.pity_count.saturating_sub(20),
-                    _ => status.pity_count + 1,
-                };
-
-                // Focus charges: reset for a focus unit while charges are active, increment for off-focus
-                status.focus_charges = match (pool, status.focus_charges, banner.has_charges) {
-                    (Pool::Fivestar, _, true) => (status.focus_charges + 1).min(3),
-                    (Pool::Focus, 3, true) => 0,
-                    _ => status.focus_charges,
-                };
+                status.update(pool, num_pulled);
 
                 if (is_common_unit || pool != Pool::Common)
                     && goal.color == color
@@ -199,7 +191,7 @@ fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> 
     let rates = get_rates(
         banner.starting_rates(),
         status.pity_count / 5,
-        status.focus_charges >= 3,
+        banner.has_charges && status.focus_charges >= 3,
     );
 
     let pool_dist = WeightedIndex::new(&rates).unwrap();
