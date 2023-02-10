@@ -1,7 +1,6 @@
-use std::{array, rc::Rc};
+use std::array;
 
-use memoize::memoize;
-use rand::{distributions::WeightedIndex, prelude::Distribution, rngs::SmallRng, Rng, SeedableRng};
+use rand::{prelude::Distribution, rngs::SmallRng, Rng, SeedableRng};
 
 use crate::{
     banner::GenericBanner,
@@ -17,6 +16,46 @@ struct Status {
     orbs_spent: u32,
     pity_count: u32,
     focus_charges: u32,
+}
+
+struct DistributionCache {
+    color_dists: Vec<WeightedIndexColor>,
+    pool_dists: Vec<WeightedIndexPool>,
+}
+
+impl DistributionCache {
+    pub fn new(banner: &GenericBanner) -> Self {
+        let mut pool_dists = Vec::new();
+        for i in 0..=24 {
+            pool_dists.push(get_pool_dist(banner.starting_rates(), i, true));
+        }
+        for i in 0..=24 {
+            pool_dists.push(get_pool_dist(banner.starting_rates(), i, false));
+        }
+        let mut color_dists = Vec::new();
+        color_dists.push(get_color_dist(banner.pool_sizes(Pool::Focus)));
+        color_dists.push(get_color_dist(banner.pool_sizes(Pool::Fivestar)));
+        color_dists.push(get_color_dist(banner.pool_sizes(Pool::FourstarFocus)));
+        color_dists.push(get_color_dist(banner.pool_sizes(Pool::FourstarSpecial)));
+        color_dists.push(get_color_dist(banner.pool_sizes(Pool::Common)));
+        Self {
+            color_dists,
+            pool_dists,
+        }
+    }
+
+    pub fn get_pool_dist(&self, pity_incr: u32, focus_charge_active: bool) -> &WeightedIndexPool {
+        let pity_incr = pity_incr.min(24);
+        if focus_charge_active {
+            &self.pool_dists[pity_incr as usize]
+        } else {
+            &self.pool_dists[pity_incr as usize + 25]
+        }
+    }
+
+    pub fn get_color_dist(&self, pool: Pool) -> &WeightedIndexColor {
+        &self.color_dists[pool as usize]
+    }
 }
 
 impl Status {
@@ -58,14 +97,19 @@ pub fn sim_until_goal_many(
     iters: u32,
 ) -> FrequencyCounter {
     let mut counter = FrequencyCounter::new();
+    let cache = DistributionCache::new(banner);
     for _ in 0..iters {
-        let result = sim_until_goal(banner, goal.clone());
+        let result = sim_until_goal(banner, goal.clone(), &cache);
         counter[result] += 1;
     }
     counter
 }
 
-pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
+fn sim_until_goal(
+    banner: &GenericBanner,
+    mut goal: UnitCountGoal,
+    cache: &DistributionCache,
+) -> u32 {
     let mut status = Status {
         total_pulled: 0,
         orbs_spent: 0,
@@ -79,7 +123,7 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
     let mut rng = SmallRng::from_rng(&mut rand::thread_rng()).unwrap();
     'sim: loop {
         let mut num_pulled = 0;
-        let session = make_session(banner, &status, &mut rng);
+        let session = make_session(banner, &status, &mut rng, cache);
         for (i, &(pool, color)) in session.iter().enumerate() {
             if goal.colors().contains(color) || (num_pulled == 0 && i == 4) {
                 num_pulled += 1;
@@ -130,14 +174,15 @@ pub fn sim_orb_budget_many(
     iters: u32,
 ) -> FrequencyCounter {
     let mut counter = FrequencyCounter::new();
+    let cache = DistributionCache::new(banner);
     for _ in 0..iters {
-        let result = sim_orb_budget(banner, goal);
+        let result = sim_orb_budget(banner, goal, &cache);
         counter[result] += 1;
     }
     counter
 }
 
-pub fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal) -> u32 {
+fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal, cache: &DistributionCache) -> u32 {
     let mut status = Status {
         total_pulled: 0,
         orbs_spent: 0,
@@ -149,7 +194,7 @@ pub fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal) -> u32 {
     let mut rng = SmallRng::from_rng(&mut rand::thread_rng()).unwrap();
     loop {
         let mut num_pulled = 0;
-        let session = make_session(banner, &status, &mut rng);
+        let session = make_session(banner, &status, &mut rng, cache);
         for (i, &(pool, color)) in session.iter().enumerate() {
             let next_orb_cost = match num_pulled {
                 0 => 5,
@@ -190,35 +235,35 @@ pub fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal) -> u32 {
     num_goal_units_pulled
 }
 
-fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> [(Pool, Color); 5] {
-    let pool_dist = get_pool_dist(
-        banner.starting_rates(),
+fn make_session(
+    banner: &GenericBanner,
+    status: &Status,
+    rng: &mut SmallRng,
+    cache: &DistributionCache,
+) -> [(Pool, Color); 5] {
+    let pool_dist = cache.get_pool_dist(
         status.pity_count / 5,
         banner.has_charges && status.focus_charges >= 3,
     );
 
     array::from_fn(|_| {
         let pool = pool_dist.sample(rng);
-        let pool = pool.try_into().unwrap();
-
-        let color_dist = get_color_dist(banner.pool_sizes(pool));
+        let color_dist = cache.get_color_dist(pool);
         let color = color_dist.sample(rng);
 
         (pool, color)
     })
 }
 
-#[memoize(CustomHasher: fxhash::FxHashMap, HasherInit: fxhash::FxHashMap::default())]
-fn get_color_dist(pool_sizes: [u8; 4]) -> Rc<WeightedIndexColor> {
-    Rc::new(WeightedIndexColor::new(pool_sizes))
+fn get_color_dist(pool_sizes: [u8; 4]) -> WeightedIndexColor {
+    WeightedIndexColor::new(pool_sizes)
 }
 
-#[memoize(CustomHasher: fxhash::FxHashMap, HasherInit: fxhash::FxHashMap::default())]
 fn get_pool_dist(
     starting_rates: [u8; 5],
     pity_incr: u32,
     focus_charge_active: bool,
-) -> Rc<WeightedIndexPool> {
+) -> WeightedIndexPool {
     let pity_pct = pity_incr as f32 * 0.005;
     let mut rates: [f32; 5] = std::array::from_fn(|i| starting_rates[i] as f32 / 100.0);
     let fivestar_total = rates[Pool::Focus as usize] + rates[Pool::Fivestar as usize];
@@ -245,9 +290,9 @@ fn get_pool_dist(
         rates[Pool::Fivestar as usize] = 0.0;
     }
 
-    debug_assert!((rates.iter().sum::<f32>() - 1.0).abs() < 0.00000001);
+    debug_assert!((rates.iter().sum::<f32>() - 1.0).abs() < 0.0000001);
 
-    Rc::new(WeightedIndexPool::new(rates))
+    WeightedIndexPool::new(rates)
 }
 
 #[cfg(test)]
@@ -299,12 +344,12 @@ mod test {
                 pools: EnumSet::from(Pool::Focus),
             }],
         };
-        let results = sim_until_goal_many(&banner, &goal, 1000);
+        let results = sim_until_goal_many(&banner, &goal, 10000);
 
         {
             let mut banner = banner.clone();
             banner.has_charges = false;
-            let results_without_focus_charges = sim_until_goal_many(&banner, &goal, 1000);
+            let results_without_focus_charges = sim_until_goal_many(&banner, &goal, 10000);
             let medians = dbg!(
                 high_percentile(&results),
                 high_percentile(&results_without_focus_charges)
@@ -315,7 +360,7 @@ mod test {
         {
             let mut banner = banner.clone();
             banner.starting_rates = (4, 2);
-            let results_with_higher_rate = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_higher_rate = sim_until_goal_many(&banner, &goal, 10000);
             let medians = dbg!(median(&results_with_higher_rate), median(&results));
             assert!(medians.0 <= medians.1);
         }
@@ -323,7 +368,7 @@ mod test {
         {
             let mut banner = banner.clone();
             banner.focus_sizes = [1, 1, 1, 0];
-            let results_with_fewer_focuses = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_fewer_focuses = sim_until_goal_many(&banner, &goal, 10000);
             let medians = dbg!(median(&results_with_fewer_focuses), median(&results));
             assert!(medians.0 <= medians.1);
         }
@@ -331,7 +376,7 @@ mod test {
         {
             let mut goal = goal.clone();
             goal.units[0].pools |= Pool::Common;
-            let results_with_common_pool = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_common_pool = sim_until_goal_many(&banner, &goal, 10000);
             let medians = dbg!(median(&results_with_common_pool), median(&results));
             assert!(medians.0 <= medians.1);
         }
@@ -339,7 +384,7 @@ mod test {
         {
             let mut banner = banner.clone();
             banner.has_spark = true;
-            let results_with_spark = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_spark = sim_until_goal_many(&banner, &goal, 10000);
             assert!(dbg!(results_with_spark.len()) <= 201);
         }
 
@@ -347,9 +392,9 @@ mod test {
             let mut goal = goal.clone();
             let mut banner = banner.clone();
             goal.units[0].copies = 2;
-            let results_with_extra_copy = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_extra_copy = sim_until_goal_many(&banner, &goal, 10000);
             banner.has_spark = true;
-            let results_with_extra_copy_and_spark = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_extra_copy_and_spark = sim_until_goal_many(&banner, &goal, 10000);
             let medians = dbg!(
                 median(&results_with_extra_copy_and_spark),
                 median(&results_with_extra_copy)
@@ -362,9 +407,9 @@ mod test {
             let mut banner = banner.clone();
             goal.units[0].pools |= Pool::FourstarFocus;
             banner.fourstar_focus_sizes = [1, 0, 0, 0];
-            let results_with_fourstar_focus = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_fourstar_focus = sim_until_goal_many(&banner, &goal, 10000);
             banner.fourstar_focus_sizes = [1, 0, 0, 1];
-            let results_with_extra_fourstar_focus = sim_until_goal_many(&banner, &goal, 1000);
+            let results_with_extra_fourstar_focus = sim_until_goal_many(&banner, &goal, 10000);
             let medians = dbg!(
                 median(&results_with_fourstar_focus),
                 median(&results_with_extra_fourstar_focus),
@@ -385,12 +430,12 @@ mod test {
             limit: 200,
             pools: EnumSet::from(Pool::Focus),
         };
-        let results = sim_orb_budget_many(&banner, &goal, 1000);
+        let results = sim_orb_budget_many(&banner, &goal, 10000);
 
         {
             let mut banner = banner.clone();
             banner.has_spark = true;
-            let results_with_spark = sim_orb_budget_many(&banner, &goal, 1000);
+            let results_with_spark = sim_orb_budget_many(&banner, &goal, 10000);
             assert!(results_with_spark[0] == 0);
             let medians = dbg!(median(&results), median(&results_with_spark));
             assert!(medians.0 <= medians.1);
@@ -399,7 +444,7 @@ mod test {
         {
             let mut goal = goal.clone();
             goal.limit = 1500;
-            let results_with_many = sim_orb_budget_many(&banner, &goal, 1000);
+            let results_with_many = sim_orb_budget_many(&banner, &goal, 10000);
             let median = dbg!(median(&results_with_many));
             assert!(median >= 10);
             assert!(median <= 11);
