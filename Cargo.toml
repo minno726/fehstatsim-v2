@@ -1,5 +1,8 @@
 [workspace]
-
 members = [
     "summon_simulator",
 ]
+
+[profile.bench]
+debug = true
+

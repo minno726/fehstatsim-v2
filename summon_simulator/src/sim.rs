@@ -1,4 +1,4 @@
-use std::array;
+use std::{array, rc::Rc};
 
 use memoize::memoize;
 use rand::{distributions::WeightedIndex, prelude::Distribution, rngs::SmallRng, Rng, SeedableRng};
@@ -190,19 +190,17 @@ pub fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal) -> u32 {
 }
 
 fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> [(Pool, Color); 5] {
-    let rates = get_rates(
+    let pool_dist = get_pool_dist(
         banner.starting_rates(),
         status.pity_count / 5,
         banner.has_charges && status.focus_charges >= 3,
     );
 
-    let pool_dist = WeightedIndex::new(&rates).unwrap();
-
     array::from_fn(|_| {
         let pool = pool_dist.sample(rng);
         let pool = pool.try_into().unwrap();
 
-        let color_dist = WeightedIndex::new(&banner.pool_sizes(pool)).unwrap();
+        let color_dist = get_color_dist(banner.pool_sizes(pool));
         let color = color_dist.sample(rng);
         let color = color.try_into().unwrap();
 
@@ -211,7 +209,16 @@ fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> 
 }
 
 #[memoize(CustomHasher: fxhash::FxHashMap, HasherInit: fxhash::FxHashMap::default())]
-fn get_rates(starting_rates: [u8; 5], pity_incr: u32, focus_charge_active: bool) -> [f64; 5] {
+fn get_color_dist(pool_sizes: [u8; 4]) -> Rc<WeightedIndex<u8>> {
+    Rc::new(WeightedIndex::new(&pool_sizes).unwrap())
+}
+
+#[memoize(CustomHasher: fxhash::FxHashMap, HasherInit: fxhash::FxHashMap::default())]
+fn get_pool_dist(
+    starting_rates: [u8; 5],
+    pity_incr: u32,
+    focus_charge_active: bool,
+) -> Rc<WeightedIndex<f64>> {
     let pity_pct = pity_incr as f64 * 0.005;
     let mut rates: [f64; 5] = std::array::from_fn(|i| starting_rates[i] as f64 / 100.0);
     let fivestar_total = rates[Pool::Focus as usize] + rates[Pool::Fivestar as usize];
@@ -240,7 +247,7 @@ fn get_rates(starting_rates: [u8; 5], pity_incr: u32, focus_charge_active: bool)
 
     debug_assert!((rates.iter().sum::<f64>() - 1.0).abs() < 0.00000001);
 
-    rates
+    Rc::new(WeightedIndex::new(&rates).unwrap())
 }
 
 #[cfg(test)]
