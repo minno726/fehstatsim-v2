@@ -3,7 +3,7 @@ use rand::prelude::Distribution;
 use crate::types::{Color, Pool};
 
 pub struct WeightedIndexColor {
-    thresholds: [f32; 3],
+    thresholds: [u32; 3],
 }
 
 impl WeightedIndexColor {
@@ -13,9 +13,9 @@ impl WeightedIndexColor {
         debug_assert!(values.len() == 4);
         Self {
             thresholds: [
-                values[0] / sum,
-                (values[0] + values[1]) / sum,
-                (values[0] + values[1] + values[2]) / sum,
+                ((values[0] / sum) * u32::MAX as f32) as u32,
+                (((values[0] + values[1]) / sum) * u32::MAX as f32) as u32,
+                (((values[0] + values[1] + values[2]) / sum) * u32::MAX as f32) as u32,
             ],
         }
     }
@@ -23,7 +23,7 @@ impl WeightedIndexColor {
 
 impl Distribution<Color> for WeightedIndexColor {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Color {
-        let choice = rng.gen::<f32>();
+        let choice = rng.gen::<u32>();
         if choice < self.thresholds[1] {
             if choice < self.thresholds[0] {
                 Color::Red
@@ -41,7 +41,7 @@ impl Distribution<Color> for WeightedIndexColor {
 }
 
 pub struct WeightedIndexPool {
-    thresholds: [f32; 4],
+    thresholds: [u32; 4],
 }
 
 impl WeightedIndexPool {
@@ -51,10 +51,10 @@ impl WeightedIndexPool {
         debug_assert!(values.len() == 5);
         Self {
             thresholds: [
-                values[0] / sum,
-                (values[0] + values[1]) / sum,
-                (values[0] + values[1] + values[2]) / sum,
-                (values[0] + values[1] + values[2] + values[3]) / sum,
+                ((values[0] / sum) * u32::MAX as f32) as u32,
+                (((values[0] + values[1]) / sum) * u32::MAX as f32) as u32,
+                (((values[0] + values[1] + values[2]) / sum) * u32::MAX as f32) as u32,
+                (((values[0] + values[1] + values[2] + values[3]) / sum) * u32::MAX as f32) as u32,
             ],
         }
     }
@@ -62,7 +62,7 @@ impl WeightedIndexPool {
 
 impl Distribution<Pool> for WeightedIndexPool {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Pool {
-        let choice = rng.gen::<f32>();
+        let choice = rng.gen::<u32>();
         if choice > self.thresholds[3] {
             Pool::Common
         } else {
