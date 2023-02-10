@@ -20,11 +20,11 @@ fn sim_benchmark(c: &mut Criterion) {
         }],
     };
     c.bench_function("standard_one_red_focus_1000x", |b| {
-        b.iter(|| sim_until_goal_many(&banner, goal.clone(), 1000))
+        b.iter(|| sim_until_goal_many(&banner, &goal, 1000))
     });
     // To test competitiveness with the old version, which completes 200k iterations in 1-2s on WASM
     // c.bench_function("standard_one_red_focus_200kx", |b| {
-    //     b.iter(|| sim_until_goal_many(&banner, goal.clone(), 200000))
+    //     b.iter(|| sim_until_goal_many(&banner, &goal, 200000))
     // });
 }
 
