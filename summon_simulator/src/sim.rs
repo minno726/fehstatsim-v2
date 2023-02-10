@@ -158,7 +158,7 @@ mod test {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
-        let goal = UnitCountGoal {
+        let mut goal = UnitCountGoal {
             units: vec![UnitGoal {
                 color: Color::Red,
                 copies: 1,
@@ -185,6 +185,12 @@ mod test {
         let results_with_fewer_focuses = sim_until_goal_many(&banner, goal.clone(), 1000);
         banner.focus_sizes = [1, 1, 1, 1];
         let medians = dbg!(median(&results_with_fewer_focuses), median(&results));
+        assert!(medians.0 <= medians.1);
+
+        goal.units[0].pools |= Pool::Common;
+        let results_with_common_pool = sim_until_goal_many(&banner, goal.clone(), 1000);
+        goal.units[0].pools -= Pool::Common;
+        let medians = dbg!(median(&results_with_common_pool), median(&results));
         assert!(medians.0 <= medians.1);
     }
 }
