@@ -270,5 +270,22 @@ mod test {
             );
             assert!(medians.0 <= medians.1);
         }
+
+        {
+            let mut goal = goal.clone();
+            let mut banner = banner.clone();
+            goal.units[0].pools |= Pool::FourstarFocus;
+            banner.fourstar_focus_sizes = [1, 0, 0, 0];
+            let results_with_fourstar_focus = sim_until_goal_many(&banner, goal.clone(), 1000);
+            banner.fourstar_focus_sizes = [1, 0, 0, 1];
+            let results_with_extra_fourstar_focus =
+                sim_until_goal_many(&banner, goal.clone(), 1000);
+            let medians = dbg!(
+                median(&results_with_fourstar_focus),
+                median(&results_with_extra_fourstar_focus),
+                median(&results)
+            );
+            assert!(medians.0 <= medians.1 && medians.1 <= medians.2);
+        }
     }
 }
