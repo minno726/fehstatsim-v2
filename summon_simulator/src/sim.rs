@@ -112,7 +112,7 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
 fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> [(Pool, Color); 5] {
     let rates = get_rates(
         banner.starting_rates(),
-        status.pity_count,
+        status.pity_count / 5,
         status.focus_charges >= 3,
     );
 
@@ -131,18 +131,27 @@ fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> 
 }
 
 #[memoize(CustomHasher: fxhash::FxHashMap, HasherInit: fxhash::FxHashMap::default())]
-fn get_rates(starting_rates: [u8; 5], pity_count: u32, focus_charge_active: bool) -> [f64; 5] {
-    let pity_pct = (pity_count / 5) as f64 * 0.005;
+fn get_rates(starting_rates: [u8; 5], pity_incr: u32, focus_charge_active: bool) -> [f64; 5] {
+    let pity_pct = pity_incr as f64 * 0.005;
     let mut rates: [f64; 5] = std::array::from_fn(|i| starting_rates[i] as f64 / 100.0);
     let fivestar_total = rates[Pool::Focus as usize] + rates[Pool::Fivestar as usize];
-    rates[Pool::Focus as usize] += pity_pct * rates[Pool::Focus as usize] / fivestar_total;
-    rates[Pool::Fivestar as usize] += pity_pct * rates[Pool::Fivestar as usize] / fivestar_total;
-    rates[Pool::FourstarFocus as usize] -=
-        pity_pct * rates[Pool::FourstarFocus as usize] / (1.0 - fivestar_total);
-    rates[Pool::FourstarSpecial as usize] -=
-        pity_pct * rates[Pool::FourstarSpecial as usize] / (1.0 - fivestar_total);
-    rates[Pool::Common as usize] -=
-        pity_pct * rates[Pool::Common as usize] / (1.0 - fivestar_total);
+    if pity_incr >= 24 {
+        rates[Pool::Focus as usize] = rates[Pool::Focus as usize] / fivestar_total;
+        rates[Pool::Fivestar as usize] = rates[Pool::Fivestar as usize] / fivestar_total;
+        rates[Pool::FourstarFocus as usize] = 0.0;
+        rates[Pool::FourstarSpecial as usize] = 0.0;
+        rates[Pool::Common as usize] = 0.0;
+    } else {
+        rates[Pool::Focus as usize] += pity_pct * rates[Pool::Focus as usize] / fivestar_total;
+        rates[Pool::Fivestar as usize] +=
+            pity_pct * rates[Pool::Fivestar as usize] / fivestar_total;
+        rates[Pool::FourstarFocus as usize] -=
+            pity_pct * rates[Pool::FourstarFocus as usize] / (1.0 - fivestar_total);
+        rates[Pool::FourstarSpecial as usize] -=
+            pity_pct * rates[Pool::FourstarSpecial as usize] / (1.0 - fivestar_total);
+        rates[Pool::Common as usize] -=
+            pity_pct * rates[Pool::Common as usize] / (1.0 - fivestar_total);
+    }
 
     if focus_charge_active {
         rates[Pool::Focus as usize] += rates[Pool::Fivestar as usize];
