@@ -19,8 +19,8 @@ fn sim_benchmark(c: &mut Criterion) {
             pools: EnumSet::from(Pool::Focus),
         }],
     };
-    c.bench_function("standard_one_red_focus_1000x", |b| {
-        b.iter(|| sim_until_goal_many(&banner, &goal, 1000))
+    c.bench_function("standard_one_red_focus_10kx", |b| {
+        b.iter(|| sim_until_goal_many(&banner, &goal, 10000))
     });
     // To test competitiveness with the old version, which completes 200k iterations in 1-2s on WASM
     // c.bench_function("standard_one_red_focus_200kx", |b| {
