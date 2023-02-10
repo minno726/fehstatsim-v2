@@ -1,9 +1,9 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use enumset::EnumSet;
 use summon_simulator::{
     banner::BannerType,
     goal::{UnitCountGoal, UnitGoal},
-    sim::{sim_until_goal, sim_until_goal_many},
+    sim::{sim_until_goal_many},
     types::{Color, Pool},
 };
 

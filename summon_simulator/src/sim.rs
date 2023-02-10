@@ -89,6 +89,11 @@ fn make_session(banner: &GenericBanner, status: &Status) -> [(Pool, Color); 5] {
     rates[Pool::Common as usize] -=
         pity_pct * rates[Pool::Common as usize] / (1.0 - fivestar_total);
 
+    if status.focus_charges >= 3 {
+        rates[Pool::Focus as usize] += rates[Pool::Fivestar as usize];
+        rates[Pool::Fivestar as usize] = 0.0;
+    }
+
     debug_assert!((rates.iter().sum::<f64>() - 1.0).abs() < 0.00000001);
 
     let pool_dist = WeightedIndex::new(&rates).unwrap();
@@ -113,9 +118,37 @@ mod test {
 
     use super::*;
 
+    fn median(counter: &FrequencyCounter) -> u32 {
+        let total = counter.iter().sum();
+        let mut cum_total = 0;
+        counter
+            .iter()
+            .enumerate()
+            .find(|&(_, el)| {
+                cum_total += *el;
+                cum_total * 2 >= total
+            })
+            .unwrap()
+            .0 as u32
+    }
+
+    fn high_percentile(counter: &FrequencyCounter) -> u32 {
+        let total: u32 = counter.iter().sum();
+        let mut cum_total = 0;
+        counter
+            .iter()
+            .enumerate()
+            .find(|&(_, el)| {
+                cum_total += *el;
+                cum_total * 10 >= total * 9
+            })
+            .unwrap()
+            .0 as u32
+    }
+
     #[test]
     fn test_distribution() {
-        let banner = BannerType::Standard {
+        let mut banner = BannerType::Standard {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
@@ -126,8 +159,26 @@ mod test {
                 pools: EnumSet::from(Pool::Focus),
             }],
         };
-        let results = sim_until_goal_many(&banner, goal, 10000);
-        dbg!(results);
-        //assert!(false);
+        let results = sim_until_goal_many(&banner, goal.clone(), 1000);
+        banner.has_charges = false;
+        let results_without_focus_charges = sim_until_goal_many(&banner, goal.clone(), 1000);
+        banner.has_charges = true;
+        let medians = dbg!(
+            high_percentile(&results),
+            high_percentile(&results_without_focus_charges)
+        );
+        assert!(medians.0 <= medians.1);
+
+        banner.starting_rates = (4, 2);
+        let results_with_higher_rate = sim_until_goal_many(&banner, goal.clone(), 1000);
+        banner.starting_rates = (3, 3);
+        let medians = dbg!(median(&results_with_higher_rate), median(&results));
+        assert!(medians.0 <= medians.1);
+
+        banner.focus_sizes = [1, 1, 1, 0];
+        let results_with_fewer_focuses = sim_until_goal_many(&banner, goal.clone(), 1000);
+        banner.focus_sizes = [1, 1, 1, 1];
+        let medians = dbg!(median(&results_with_fewer_focuses), median(&results));
+        assert!(medians.0 <= medians.1);
     }
 }

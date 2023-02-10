@@ -1,12 +1,11 @@
 use enumset::EnumSet;
-use rand::Rng;
 
 use crate::types::{Color, Pool};
 
 #[derive(Clone, Debug)]
 pub enum Goal {
     Quantity(UnitCountGoal),
-    OrbBudget(BudgetGoal),
+    //OrbBudget(BudgetGoal),
 }
 
 #[derive(Clone, Debug)]
@@ -47,9 +46,9 @@ impl UnitCountGoal {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct BudgetGoal {
-    color: Color,
-    limit: u32,
-    pools: EnumSet<Pool>,
-}
+// #[derive(Copy, Clone, Debug)]
+// pub struct BudgetGoal {
+//     color: Color,
+//     limit: u32,
+//     pools: EnumSet<Pool>,
+// }
