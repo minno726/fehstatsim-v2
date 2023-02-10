@@ -11,6 +11,7 @@ use crate::{
 
 #[derive(Copy, Clone, Debug)]
 struct Status {
+    total_pulled: u32,
     orbs_spent: u32,
     pity_count: u32,
     focus_charges: u32,
@@ -31,6 +32,7 @@ pub fn sim_until_goal_many(
 
 pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
     let mut status = Status {
+        total_pulled: 0,
         orbs_spent: 0,
         pity_count: 0,
         focus_charges: 0,
@@ -46,6 +48,7 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
         for (i, &(pool, color)) in session.iter().enumerate() {
             if goal.colors().contains(color) || (num_pulled == 0 && i == 4) {
                 num_pulled += 1;
+                status.total_pulled += 1;
                 status.orbs_spent += match num_pulled {
                     1 => 5,
                     2..=4 => 4,
@@ -53,12 +56,14 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
                     _ => panic!("Invalid num_pulled"),
                 };
 
+                // Pity rate: reset for a focus, subtract 2% worth for off-focus, increment otherwise
                 status.pity_count = match pool {
                     Pool::Focus => 0,
                     Pool::Fivestar => status.pity_count.saturating_sub(20),
                     _ => status.pity_count + 1,
                 };
 
+                // Focus charges: reset for a focus unit while charges are active, increment for off-focus
                 status.focus_charges = match (pool, status.focus_charges, banner.has_charges) {
                     (Pool::Fivestar, _, true) => (status.focus_charges + 1).min(3),
                     (Pool::Focus, 3, true) => 0,
@@ -72,6 +77,30 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
                         break 'sim;
                     }
                 }
+
+                // Don't finish the session if a spark is enough to reach the goal
+                if banner.has_spark
+                    && status.total_pulled == 40
+                    && goal.units.iter().map(|unit| unit.copies).sum::<u32>() == 1
+                {
+                    break;
+                }
+            }
+        }
+        // Spark, if possible
+        if banner.has_spark && status.total_pulled >= 40 && (status.total_pulled - num_pulled) < 40
+        {
+            // If there's one unit with more copies required left than the others, pick that one
+            let max_copies_needed = goal.units.iter().map(|unit| unit.copies).max().unwrap();
+            let mut spark_candidates = goal
+                .units
+                .iter_mut()
+                .filter(|unit| unit.copies == max_copies_needed)
+                .collect::<Vec<_>>();
+            // If there are multiples, then just pick the first one
+            spark_candidates[0].copies -= 1;
+            if goal.finished() {
+                break 'sim;
             }
         }
     }
@@ -153,11 +182,11 @@ mod test {
 
     #[test]
     fn test_distribution() {
-        let mut banner = BannerType::Standard {
+        let banner = BannerType::Standard {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
-        let mut goal = UnitCountGoal {
+        let goal = UnitCountGoal {
             units: vec![UnitGoal {
                 color: Color::Red,
                 copies: 1,
@@ -165,31 +194,62 @@ mod test {
             }],
         };
         let results = sim_until_goal_many(&banner, goal.clone(), 1000);
-        banner.has_charges = false;
-        let results_without_focus_charges = sim_until_goal_many(&banner, goal.clone(), 1000);
-        banner.has_charges = true;
-        let medians = dbg!(
-            high_percentile(&results),
-            high_percentile(&results_without_focus_charges)
-        );
-        assert!(medians.0 <= medians.1);
 
-        banner.starting_rates = (4, 2);
-        let results_with_higher_rate = sim_until_goal_many(&banner, goal.clone(), 1000);
-        banner.starting_rates = (3, 3);
-        let medians = dbg!(median(&results_with_higher_rate), median(&results));
-        assert!(medians.0 <= medians.1);
+        {
+            let mut banner = banner.clone();
+            banner.has_charges = false;
+            let results_without_focus_charges = sim_until_goal_many(&banner, goal.clone(), 1000);
+            let medians = dbg!(
+                high_percentile(&results),
+                high_percentile(&results_without_focus_charges)
+            );
+            assert!(medians.0 <= medians.1);
+        }
 
-        banner.focus_sizes = [1, 1, 1, 0];
-        let results_with_fewer_focuses = sim_until_goal_many(&banner, goal.clone(), 1000);
-        banner.focus_sizes = [1, 1, 1, 1];
-        let medians = dbg!(median(&results_with_fewer_focuses), median(&results));
-        assert!(medians.0 <= medians.1);
+        {
+            let mut banner = banner.clone();
+            banner.starting_rates = (4, 2);
+            let results_with_higher_rate = sim_until_goal_many(&banner, goal.clone(), 1000);
+            let medians = dbg!(median(&results_with_higher_rate), median(&results));
+            assert!(medians.0 <= medians.1);
+        }
 
-        goal.units[0].pools |= Pool::Common;
-        let results_with_common_pool = sim_until_goal_many(&banner, goal.clone(), 1000);
-        goal.units[0].pools -= Pool::Common;
-        let medians = dbg!(median(&results_with_common_pool), median(&results));
-        assert!(medians.0 <= medians.1);
+        {
+            let mut banner = banner.clone();
+            banner.focus_sizes = [1, 1, 1, 0];
+            let results_with_fewer_focuses = sim_until_goal_many(&banner, goal.clone(), 1000);
+            let medians = dbg!(median(&results_with_fewer_focuses), median(&results));
+            assert!(medians.0 <= medians.1);
+        }
+
+        {
+            let mut goal = goal.clone();
+            goal.units[0].pools |= Pool::Common;
+            let results_with_common_pool = sim_until_goal_many(&banner, goal.clone(), 1000);
+            let medians = dbg!(median(&results_with_common_pool), median(&results));
+            assert!(medians.0 <= medians.1);
+        }
+
+        {
+            let mut banner = banner.clone();
+            banner.has_spark = true;
+            let results_with_spark = sim_until_goal_many(&banner, goal.clone(), 1000);
+            assert!(dbg!(results_with_spark.len()) <= 201);
+        }
+
+        {
+            let mut goal = goal.clone();
+            let mut banner = banner.clone();
+            goal.units[0].copies = 2;
+            let results_with_extra_copy = sim_until_goal_many(&banner, goal.clone(), 1000);
+            banner.has_spark = true;
+            let results_with_extra_copy_and_spark =
+                sim_until_goal_many(&banner, goal.clone(), 1000);
+            let medians = dbg!(
+                median(&results_with_extra_copy_and_spark),
+                median(&results_with_extra_copy)
+            );
+            assert!(medians.0 <= medians.1);
+        }
     }
 }

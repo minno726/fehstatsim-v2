@@ -93,6 +93,7 @@ impl BannerType {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct GenericBanner {
     pub starting_rates: (u8, u8),
     pub focus_sizes: [u8; 4],
