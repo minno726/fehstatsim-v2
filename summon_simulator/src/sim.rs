@@ -101,6 +101,7 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
                 }
             }
         }
+        debug_assert!(num_pulled >= 1 && num_pulled <= 5);
         // Spark, if possible
         if banner.has_spark && status.total_pulled >= 40 && (status.total_pulled - num_pulled) < 40
         {
@@ -173,6 +174,7 @@ pub fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal) -> u32 {
                 }
             }
         }
+        debug_assert!(num_pulled >= 1 && num_pulled <= 5);
         // Spark, if possible
         if banner.has_spark && status.total_pulled >= 40 && (status.total_pulled - num_pulled) < 40
         {
