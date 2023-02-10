@@ -8,6 +8,7 @@ use crate::{
     frequency_counter::FrequencyCounter,
     goal::{BudgetGoal, Goal, UnitCountGoal},
     types::{Color, Pool},
+    weightedindex::{WeightedIndexColor, WeightedIndexPool},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -202,15 +203,14 @@ fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> 
 
         let color_dist = get_color_dist(banner.pool_sizes(pool));
         let color = color_dist.sample(rng);
-        let color = color.try_into().unwrap();
 
         (pool, color)
     })
 }
 
 #[memoize(CustomHasher: fxhash::FxHashMap, HasherInit: fxhash::FxHashMap::default())]
-fn get_color_dist(pool_sizes: [u8; 4]) -> Rc<WeightedIndex<u8>> {
-    Rc::new(WeightedIndex::new(&pool_sizes).unwrap())
+fn get_color_dist(pool_sizes: [u8; 4]) -> Rc<WeightedIndexColor> {
+    Rc::new(WeightedIndexColor::new(pool_sizes))
 }
 
 #[memoize(CustomHasher: fxhash::FxHashMap, HasherInit: fxhash::FxHashMap::default())]
@@ -218,9 +218,9 @@ fn get_pool_dist(
     starting_rates: [u8; 5],
     pity_incr: u32,
     focus_charge_active: bool,
-) -> Rc<WeightedIndex<f64>> {
-    let pity_pct = pity_incr as f64 * 0.005;
-    let mut rates: [f64; 5] = std::array::from_fn(|i| starting_rates[i] as f64 / 100.0);
+) -> Rc<WeightedIndexPool> {
+    let pity_pct = pity_incr as f32 * 0.005;
+    let mut rates: [f32; 5] = std::array::from_fn(|i| starting_rates[i] as f32 / 100.0);
     let fivestar_total = rates[Pool::Focus as usize] + rates[Pool::Fivestar as usize];
     if pity_incr >= 24 {
         rates[Pool::Focus as usize] = rates[Pool::Focus as usize] / fivestar_total;
@@ -245,9 +245,9 @@ fn get_pool_dist(
         rates[Pool::Fivestar as usize] = 0.0;
     }
 
-    debug_assert!((rates.iter().sum::<f64>() - 1.0).abs() < 0.00000001);
+    debug_assert!((rates.iter().sum::<f32>() - 1.0).abs() < 0.00000001);
 
-    Rc::new(WeightedIndex::new(&rates).unwrap())
+    Rc::new(WeightedIndexPool::new(rates))
 }
 
 #[cfg(test)]
