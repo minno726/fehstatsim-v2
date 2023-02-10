@@ -1,6 +1,6 @@
 use std::array;
 
-use rand::{distributions::WeightedIndex, prelude::Distribution, Rng};
+use rand::{distributions::WeightedIndex, prelude::Distribution, rngs::SmallRng, Rng, SeedableRng};
 
 use crate::{
     banner::GenericBanner,
@@ -39,9 +39,10 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
         .units
         .iter()
         .any(|unit| unit.pools.contains(Pool::Common));
+    let mut rng = SmallRng::from_rng(&mut rand::thread_rng()).unwrap();
     'sim: loop {
         let mut num_pulled = 0;
-        let session = make_session(banner, &status);
+        let session = make_session(banner, &status, &mut rng);
         for (i, &(pool, color)) in session.iter().enumerate() {
             if goal.colors().contains(color) || (num_pulled == 0 && i == 4) {
                 num_pulled += 1;
@@ -65,8 +66,7 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
                 };
 
                 if has_common_unit || pool != Pool::Common {
-                    let unit_index =
-                        rand::thread_rng().gen_range(0..banner.pool_sizes(pool)[color as usize]);
+                    let unit_index = rng.gen_range(0..banner.pool_sizes(pool)[color as usize]);
                     goal.pull(pool, color, unit_index);
                     if goal.finished() {
                         break 'sim;
@@ -79,8 +79,7 @@ pub fn sim_until_goal(banner: &GenericBanner, mut goal: UnitCountGoal) -> u32 {
     status.orbs_spent
 }
 
-fn make_session(banner: &GenericBanner, status: &Status) -> [(Pool, Color); 5] {
-    let mut rng = rand::thread_rng();
+fn make_session(banner: &GenericBanner, status: &Status, rng: &mut SmallRng) -> [(Pool, Color); 5] {
     let starting_rates = banner.starting_rates();
     let pity_pct = (status.pity_count / 5) as f64 * 0.005;
 
@@ -105,11 +104,11 @@ fn make_session(banner: &GenericBanner, status: &Status) -> [(Pool, Color); 5] {
     let pool_dist = WeightedIndex::new(&rates).unwrap();
 
     array::from_fn(|_| {
-        let pool = pool_dist.sample(&mut rng);
+        let pool = pool_dist.sample(rng);
         let pool = pool.try_into().unwrap();
 
         let color_dist = WeightedIndex::new(&banner.pool_sizes(pool)).unwrap();
-        let color = color_dist.sample(&mut rng);
+        let color = color_dist.sample(rng);
         let color = color.try_into().unwrap();
 
         (pool, color)
