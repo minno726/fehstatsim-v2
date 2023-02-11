@@ -97,8 +97,9 @@ pub fn sim_until_goal_many(
 ) -> FrequencyCounter {
     let mut counter = FrequencyCounter::new();
     let cache = DistributionCache::new(banner);
+    let mut rng = Xoshiro128Plus::from_rng(&mut rand::thread_rng()).unwrap();
     for _ in 0..iters {
-        let result = sim_until_goal(banner, goal.clone(), &cache);
+        let result = sim_until_goal(banner, goal.clone(), &mut rng, &cache);
         counter[result] += 1;
     }
     counter
@@ -107,6 +108,7 @@ pub fn sim_until_goal_many(
 fn sim_until_goal(
     banner: &GenericBanner,
     mut goal: UnitCountGoal,
+    rng: &mut impl Rng,
     cache: &DistributionCache,
 ) -> u32 {
     let mut status = Status {
@@ -119,10 +121,9 @@ fn sim_until_goal(
         .units
         .iter()
         .any(|unit| unit.pools.contains(Pool::Common));
-    let mut rng = Xoshiro128Plus::from_rng(&mut rand::thread_rng()).unwrap();
     'sim: loop {
         let mut num_pulled = 0;
-        let session = make_session(banner, &status, &mut rng, cache);
+        let session = make_session(banner, &status, rng, cache);
         for (i, &(pool, color)) in session.iter().enumerate() {
             if goal.colors().contains(color) || (num_pulled == 0 && i == 4) {
                 num_pulled += 1;
@@ -174,14 +175,20 @@ pub fn sim_orb_budget_many(
 ) -> FrequencyCounter {
     let mut counter = FrequencyCounter::new();
     let cache = DistributionCache::new(banner);
+    let mut rng = Xoshiro128Plus::from_rng(&mut rand::thread_rng()).unwrap();
     for _ in 0..iters {
-        let result = sim_orb_budget(banner, goal, &cache);
+        let result = sim_orb_budget(banner, goal, &mut rng, &cache);
         counter[result] += 1;
     }
     counter
 }
 
-fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal, cache: &DistributionCache) -> u32 {
+fn sim_orb_budget(
+    banner: &GenericBanner,
+    goal: &BudgetGoal,
+    rng: &mut impl Rng,
+    cache: &DistributionCache,
+) -> u32 {
     let mut status = Status {
         total_pulled: 0,
         orbs_spent: 0,
@@ -190,10 +197,9 @@ fn sim_orb_budget(banner: &GenericBanner, goal: &BudgetGoal, cache: &Distributio
     };
     let mut num_goal_units_pulled = 0;
     let is_common_unit = goal.pools.contains(Pool::Common);
-    let mut rng = Xoshiro128Plus::from_rng(&mut rand::thread_rng()).unwrap();
     loop {
         let mut num_pulled = 0;
-        let session = make_session(banner, &status, &mut rng, cache);
+        let session = make_session(banner, &status, rng, cache);
         for (i, &(pool, color)) in session.iter().enumerate() {
             let next_orb_cost = match num_pulled {
                 0 => 5,
