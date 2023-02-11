@@ -12,13 +12,11 @@ fn sim_benchmark(c: &mut Criterion) {
         focus: [1, 1, 1, 1],
     }
     .as_generic_banner(false);
-    let goal = UnitCountGoal {
-        units: vec![UnitGoal {
-            color: Color::Red,
-            copies: 1,
-            pools: EnumSet::from(Pool::Focus),
-        }],
-    };
+    let goal = UnitCountGoal::new(vec![UnitGoal {
+        color: Color::Red,
+        copies: 1,
+        pools: EnumSet::from(Pool::Focus),
+    }]);
     c.bench_function("standard_one_red_focus_10kx", |b| {
         b.iter(|| sim_until_goal_many(&banner, &goal, 10000))
     });

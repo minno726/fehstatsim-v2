@@ -11,6 +11,7 @@ pub enum Goal {
 #[derive(Clone, Debug)]
 pub struct UnitCountGoal {
     pub units: Vec<UnitGoal>,
+    colors: EnumSet<Color>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -21,10 +22,25 @@ pub struct UnitGoal {
 }
 
 impl UnitCountGoal {
+    pub fn new(units: Vec<UnitGoal>) -> Self {
+        let mut result = Self {
+            units,
+            colors: EnumSet::new(),
+        };
+        result.calculate_colors();
+        result
+    }
+
     pub fn colors(&self) -> EnumSet<Color> {
-        self.units
+        self.colors
+    }
+
+    fn calculate_colors(&mut self) {
+        self.colors = self
+            .units
             .iter()
-            .fold(EnumSet::new(), |set, val| set | val.color)
+            .filter(|unit| unit.copies > 0)
+            .fold(EnumSet::new(), |set, unit| set | unit.color);
     }
 
     pub fn pull(&mut self, pool: Pool, color: Color, unit_index: u8) {
@@ -36,6 +52,7 @@ impl UnitCountGoal {
         {
             if idx as u8 == unit_index {
                 unit.copies -= 1;
+                self.calculate_colors();
                 return;
             }
         }

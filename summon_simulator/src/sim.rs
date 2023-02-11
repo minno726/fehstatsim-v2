@@ -343,13 +343,11 @@ mod test {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
-        let goal = UnitCountGoal {
-            units: vec![UnitGoal {
-                color: Color::Red,
-                copies: 1,
-                pools: EnumSet::from(Pool::Focus),
-            }],
-        };
+        let goal = UnitCountGoal::new(vec![UnitGoal {
+            color: Color::Red,
+            copies: 1,
+            pools: EnumSet::from(Pool::Focus),
+        }]);
         let results = sim_until_goal_many(&banner, &goal, 10000);
 
         {
