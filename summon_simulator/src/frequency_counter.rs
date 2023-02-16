@@ -29,7 +29,9 @@ impl IndexMut<u32> for FrequencyCounter {
         if index >= self.data.len() {
             self.data.resize(index + 1, 0);
         }
-        &mut self.data[index]
+        // Safety: The line above guarantees that `index` is in-bounds.
+        debug_assert!(self.data.len() > index);
+        unsafe { self.data.get_unchecked_mut(index) }
     }
 }
 
