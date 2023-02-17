@@ -1,6 +1,7 @@
 use enumset::EnumSetType;
+use serde::{Deserialize, Serialize};
 
-#[derive(Hash, Debug, PartialOrd, Ord, EnumSetType)]
+#[derive(Hash, Debug, PartialOrd, Ord, EnumSetType, Serialize, Deserialize)]
 pub enum Color {
     Red,
     Blue,
@@ -22,7 +23,7 @@ impl TryFrom<usize> for Color {
     }
 }
 
-#[derive(Hash, Debug, PartialOrd, Ord, EnumSetType)]
+#[derive(Hash, Debug, PartialOrd, Ord, EnumSetType, Serialize, Deserialize)]
 pub enum Pool {
     Focus,
     Fivestar,

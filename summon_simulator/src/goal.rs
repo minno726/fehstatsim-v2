@@ -1,20 +1,21 @@
 use enumset::EnumSet;
+use serde::{Deserialize, Serialize};
 
 use crate::types::{Color, Pool};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Goal {
     Quantity(UnitCountGoal),
     OrbBudget(BudgetGoal),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UnitCountGoal {
     pub units: Vec<UnitGoal>,
     colors: EnumSet<Color>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct UnitGoal {
     pub color: Color,
     pub copies: u32,
@@ -63,7 +64,7 @@ impl UnitCountGoal {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct BudgetGoal {
     pub color: Color,
     pub limit: u32,

@@ -1,8 +1,10 @@
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 
+use serde::{Deserialize, Serialize};
+
 /// Associative array of u32 -> u32 with the interface and implementation optimized
 /// for use as a counter for small numbers with a dense distribution.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct FrequencyCounter {
     data: Vec<u32>,
 }

@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::types::Pool;
 
 pub enum BannerType {
@@ -93,7 +95,7 @@ impl BannerType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenericBanner {
     pub starting_rates: (u8, u8),
     pub focus_sizes: [u8; 4],
