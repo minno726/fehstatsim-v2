@@ -7,7 +7,7 @@ use summon_simulator::{
     goal::{UnitCountGoal, UnitGoal},
     types::{Color, Pool},
 };
-use sycamore::prelude::*;
+use sycamore::{prelude::*, rt::Event};
 use sycamore_frontend::SimWorker;
 
 fn percentiles(data: &FrequencyCounter, values: &[f32]) -> Vec<u32> {
@@ -31,6 +31,69 @@ fn percentiles(data: &FrequencyCounter, values: &[f32]) -> Vec<u32> {
     result
 }
 
+struct AppState {
+    banner_units: RcSignal<Vec<RcSignal<UnitListItem>>>,
+}
+
+#[derive(PartialEq, Eq, Clone)]
+struct UnitListItem {
+    name: RcSignal<Option<String>>,
+    color: RcSignal<Color>,
+    fourstar_focus: RcSignal<bool>,
+}
+
+#[component(inline_props)]
+fn BannerUnitListItem<G: Html>(cx: Scope, unit: RcSignal<UnitListItem>) -> View<G> {
+    let extend_name = {
+        let unit = unit.clone();
+        move |_| {
+            let mut name = unit.get().as_ref().name.get().as_ref().clone().unwrap();
+            name.push('r');
+            unit.get().name.set(Some(name));
+        }
+    };
+
+    view! { cx,
+        p(on:click=extend_name) { ( (*unit.get().name.get()).clone().unwrap_or("Unnamed".to_string()) ) }
+    }
+}
+
+#[component]
+fn BannerUnitList<G: Html>(cx: Scope) -> View<G> {
+    let app_state = use_context::<AppState>(cx);
+
+    let add_unit = {
+        let units = app_state.banner_units.clone();
+        move |_| {
+            let mut new_units = (*units.get()).clone();
+            new_units.push(create_rc_signal(UnitListItem {
+                name: create_rc_signal(Some("Whatever".to_string())),
+                color: create_rc_signal(Color::Red),
+                fourstar_focus: create_rc_signal(false),
+            }));
+            app_state.banner_units.set(new_units);
+        }
+    };
+
+    view! { cx,
+        Indexed(
+            iterable=&app_state.banner_units,
+            view=move |cx, item| view! { cx,
+                BannerUnitListItem(unit=item)
+            }
+        )
+
+        button(on:click=add_unit) { "+" }
+    }
+}
+
+#[component]
+fn BannerSelector<G: Html>(cx: Scope) -> View<G> {
+    view! { cx,
+        BannerUnitList
+    }
+}
+
 #[component]
 fn App<G: Html>(cx: Scope) -> View<G> {
     let banner = BannerType::Standard {
@@ -51,6 +114,11 @@ fn App<G: Html>(cx: Scope) -> View<G> {
             .callback(move |(data,)| state.set(percentiles(&data, &sample_percentiles)))
             .spawn("./worker.js")
     };
+
+    let app_state = AppState {
+        banner_units: create_rc_signal(vec![]),
+    };
+    let app_state = provide_context(cx, app_state);
 
     let onclick = {
         let goal = goal.clone();
@@ -78,6 +146,8 @@ fn App<G: Html>(cx: Scope) -> View<G> {
         }
     };
     view! { cx,
+        BannerSelector {}
+        br {}
         button(on:click=onclick) { "Run in worker!" }
         br {}
         label { (if state.get().is_empty() {
