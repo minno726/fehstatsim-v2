@@ -98,13 +98,14 @@ impl Sim {
         }
     }
 
-    pub fn sim(&mut self, iters: u32) {
+    pub fn sim(&mut self, iters: u32) -> &mut Self {
         let new_data = match &self.goal {
             Goal::Quantity(goal) => sim_until_goal_many(&self.banner, goal, iters),
             Goal::OrbBudget(goal) => sim_orb_budget_many(&self.banner, goal, iters),
         };
 
         self.data.combine(new_data);
+        self
     }
 
     pub fn data(&self) -> &FrequencyCounter {
@@ -363,123 +364,183 @@ mod test {
             .0 as u32
     }
 
-    #[test]
-    fn test_distribution() {
+    fn standard() -> (GenericBanner, Goal) {
         let banner = BannerType::Standard {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
-        let goal = UnitCountGoal::new(
+        let goal = Goal::Quantity(UnitCountGoal::new(
             vec![UnitGoal {
                 color: Color::Red,
                 copies: 1,
                 pools: EnumSet::from(Pool::Focus),
             }],
             true,
+        ));
+        (banner, goal)
+    }
+
+    #[test]
+    fn test_distribution_focus_charges() {
+        let (mut banner, goal) = standard();
+        let results = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
+
+        banner.has_charges = false;
+        let results_without_focus_charges = Sim::new(banner, goal).sim(10000).data().clone();
+        let medians = dbg!(
+            high_percentile(&results),
+            high_percentile(&results_without_focus_charges)
         );
-        let results = sim_until_goal_many(&banner, &goal, 10000);
+        assert!(medians.0 <= medians.1);
+    }
 
-        {
-            let mut banner = banner.clone();
-            banner.has_charges = false;
-            let results_without_focus_charges = sim_until_goal_many(&banner, &goal, 10000);
-            let medians = dbg!(
-                high_percentile(&results),
-                high_percentile(&results_without_focus_charges)
-            );
-            assert!(medians.0 <= medians.1);
+    #[test]
+    fn test_distribution_revival_rates() {
+        let (mut banner, goal) = standard();
+        let results = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
+
+        banner.starting_rates = (4, 2);
+        let results_with_higher_rate = Sim::new(banner, goal).sim(10000).data().clone();
+        let medians = dbg!(median(&results_with_higher_rate), median(&results));
+        assert!(medians.0 <= medians.1);
+    }
+
+    #[test]
+    fn test_distribution_smaller_focus_pool() {
+        let (mut banner, goal) = standard();
+        let results = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
+
+        banner.focus_sizes = [1, 1, 1, 0];
+        let results_with_fewer_focuses = Sim::new(banner, goal).sim(10000).data().clone();
+        let medians = dbg!(median(&results_with_fewer_focuses), median(&results));
+        assert!(medians.0 <= medians.1);
+    }
+
+    #[test]
+    fn test_distribution_goal_in_common_pool() {
+        let (banner, mut goal) = standard();
+        let results = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
+
+        match goal {
+            Goal::Quantity(ref mut goal) => goal.units[0].pools |= Pool::Common,
+            Goal::OrbBudget(_) => {}
         }
+        let results_with_common_pool = Sim::new(banner, goal).sim(10000).data().clone();
+        let medians = dbg!(median(&results_with_common_pool), median(&results));
+        assert!(medians.0 <= medians.1);
+    }
 
-        {
-            let mut banner = banner.clone();
-            banner.starting_rates = (4, 2);
-            let results_with_higher_rate = sim_until_goal_many(&banner, &goal, 10000);
-            let medians = dbg!(median(&results_with_higher_rate), median(&results));
-            assert!(medians.0 <= medians.1);
+    #[test]
+    fn test_distribution_spark() {
+        let (mut banner, goal) = standard();
+
+        banner.has_spark = true;
+        let results_with_spark = Sim::new(banner, goal).sim(10000).data().clone();
+        assert!(dbg!(results_with_spark.len()) <= 201);
+    }
+
+    #[test]
+    fn test_distribution_spark_multiple() {
+        let (mut banner, mut goal) = standard();
+
+        match goal {
+            Goal::Quantity(ref mut goal) => goal.units[0].copies = 2,
+            Goal::OrbBudget(_) => {}
         }
+        let results_with_extra_copy = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
+        banner.has_spark = true;
+        let results_with_extra_copy_and_spark = Sim::new(banner, goal).sim(10000).data().clone();
+        let medians = dbg!(
+            median(&results_with_extra_copy_and_spark),
+            median(&results_with_extra_copy)
+        );
+        assert!(medians.0 <= medians.1);
+    }
 
-        {
-            let mut banner = banner.clone();
-            banner.focus_sizes = [1, 1, 1, 0];
-            let results_with_fewer_focuses = sim_until_goal_many(&banner, &goal, 10000);
-            let medians = dbg!(median(&results_with_fewer_focuses), median(&results));
-            assert!(medians.0 <= medians.1);
+    #[test]
+    fn test_distribution_fourstar_focus() {
+        let (mut banner, mut goal) = standard();
+        let results = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
+
+        match goal {
+            Goal::Quantity(ref mut goal) => goal.units[0].pools |= Pool::FourstarFocus,
+            Goal::OrbBudget(_) => {}
         }
+        banner.fourstar_focus_sizes = [1, 0, 0, 0];
+        let results_with_fourstar_focus = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
 
-        {
-            let mut goal = goal.clone();
-            goal.units[0].pools |= Pool::Common;
-            let results_with_common_pool = sim_until_goal_many(&banner, &goal, 10000);
-            let medians = dbg!(median(&results_with_common_pool), median(&results));
-            assert!(medians.0 <= medians.1);
-        }
+        banner.fourstar_focus_sizes = [1, 0, 0, 1];
+        let results_with_extra_fourstar_focus = Sim::new(banner, goal).sim(10000).data().clone();
 
-        {
-            let mut banner = banner.clone();
-            banner.has_spark = true;
-            let results_with_spark = sim_until_goal_many(&banner, &goal, 10000);
-            assert!(dbg!(results_with_spark.len()) <= 201);
-        }
+        let medians = dbg!(
+            median(&results_with_fourstar_focus),
+            median(&results_with_extra_fourstar_focus),
+            median(&results)
+        );
+        assert!(medians.0 <= medians.1 && medians.1 <= medians.2);
+    }
 
-        {
-            let mut goal = goal.clone();
-            let mut banner = banner.clone();
-            goal.units[0].copies = 2;
-            let results_with_extra_copy = sim_until_goal_many(&banner, &goal, 10000);
-            banner.has_spark = true;
-            let results_with_extra_copy_and_spark = sim_until_goal_many(&banner, &goal, 10000);
-            let medians = dbg!(
-                median(&results_with_extra_copy_and_spark),
-                median(&results_with_extra_copy)
-            );
-            assert!(medians.0 <= medians.1);
-        }
+    #[test]
+    fn test_distribution_any_all() {
+        let (mut banner, mut goal) = standard();
+        banner.focus_sizes = [2, 0, 1, 1];
+        let basic_results = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
 
-        {
-            let mut goal = goal.clone();
-            let mut banner = banner.clone();
-            goal.units[0].pools |= Pool::FourstarFocus;
-            banner.fourstar_focus_sizes = [1, 0, 0, 0];
-            let results_with_fourstar_focus = sim_until_goal_many(&banner, &goal, 10000);
-            banner.fourstar_focus_sizes = [1, 0, 0, 1];
-            let results_with_extra_fourstar_focus = sim_until_goal_many(&banner, &goal, 10000);
-            let medians = dbg!(
-                median(&results_with_fourstar_focus),
-                median(&results_with_extra_fourstar_focus),
-                median(&results)
-            );
-            assert!(medians.0 <= medians.1 && medians.1 <= medians.2);
-        }
-
-        {
-            let mut banner = banner.clone();
-            banner.focus_sizes = [2, 0, 1, 1];
-            let basic_results = sim_until_goal_many(&banner, &goal, 10000);
-
-            let mut goal = goal.clone();
-            goal.units.push(UnitGoal {
+        match goal {
+            Goal::Quantity(ref mut goal) => goal.units.push(UnitGoal {
                 color: Color::Red,
                 copies: 1,
                 pools: EnumSet::from(Pool::Focus),
-            });
-            let results_needing_multiple_colors = sim_until_goal_many(&banner, &goal, 10000);
-
-            goal.need_all = false;
-            let results_accepting_multiple_colors = sim_until_goal_many(&banner, &goal, 10000);
-            let medians = dbg!(
-                median(&results_accepting_multiple_colors),
-                median(&basic_results),
-                median(&results_needing_multiple_colors),
-            );
-            // Pulling for either of the two is slightly worse than half as expensive as pulling for just one.
-            assert!(medians.0 <= medians.1);
-            assert!(medians.1 <= medians.0 * 2);
-
-            // Pulling for both of the two is less than twice as expensive as pulling for just one, because you
-            // first pull for either and then pull for just one, and that first phase is cheaper.
-            assert!(medians.1 <= medians.2);
-            assert!(medians.2 <= medians.1 * 2);
+            }),
+            Goal::OrbBudget(_) => {}
         }
+        let results_needing_multiple_colors = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
+
+        match goal {
+            Goal::Quantity(ref mut goal) => goal.need_all = false,
+            Goal::OrbBudget(_) => {}
+        }
+        let results_accepting_multiple_colors = Sim::new(banner, goal).sim(10000).data().clone();
+        let medians = dbg!(
+            median(&results_accepting_multiple_colors),
+            median(&basic_results),
+            median(&results_needing_multiple_colors),
+        );
+        // Pulling for either of the two is slightly worse than half as expensive as pulling for just one.
+        assert!(medians.0 <= medians.1);
+        assert!(medians.1 <= medians.0 * 2);
+
+        // Pulling for both of the two is less than twice as expensive as pulling for just one, because you
+        // first pull for either and then pull for just one, and that first phase is cheaper.
+        assert!(medians.1 <= medians.2);
+        assert!(medians.2 <= medians.1 * 2);
     }
 
     #[test]
@@ -488,17 +549,20 @@ mod test {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
-        let goal = BudgetGoal {
+        let goal = Goal::OrbBudget(BudgetGoal {
             color: Color::Red,
             limit: 200,
             pools: EnumSet::from(Pool::Focus),
-        };
-        let results = sim_orb_budget_many(&banner, &goal, 10000);
+        });
+        let results = Sim::new(banner.clone(), goal.clone())
+            .sim(10000)
+            .data()
+            .clone();
 
         {
             let mut banner = banner.clone();
             banner.has_spark = true;
-            let results_with_spark = sim_orb_budget_many(&banner, &goal, 10000);
+            let results_with_spark = Sim::new(banner, goal.clone()).sim(10000).data().clone();
             assert!(results_with_spark[0] == 0);
             let medians = dbg!(median(&results), median(&results_with_spark));
             assert!(medians.0 <= medians.1);
@@ -506,8 +570,11 @@ mod test {
 
         {
             let mut goal = goal.clone();
-            goal.limit = 1500;
-            let results_with_many = sim_orb_budget_many(&banner, &goal, 10000);
+            match goal {
+                Goal::OrbBudget(ref mut goal) => goal.limit = 1500,
+                Goal::Quantity(_) => {}
+            }
+            let results_with_many = Sim::new(banner, goal).sim(10000).data().clone();
             let median = dbg!(median(&results_with_many));
             assert!(median >= 10);
             assert!(median <= 11);
