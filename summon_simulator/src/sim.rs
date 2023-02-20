@@ -369,11 +369,14 @@ mod test {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
-        let goal = UnitCountGoal::new(vec![UnitGoal {
-            color: Color::Red,
-            copies: 1,
-            pools: EnumSet::from(Pool::Focus),
-        }]);
+        let goal = UnitCountGoal::new(
+            vec![UnitGoal {
+                color: Color::Red,
+                copies: 1,
+                pools: EnumSet::from(Pool::Focus),
+            }],
+            true,
+        );
         let results = sim_until_goal_many(&banner, &goal, 10000);
 
         {
@@ -446,6 +449,36 @@ mod test {
                 median(&results)
             );
             assert!(medians.0 <= medians.1 && medians.1 <= medians.2);
+        }
+
+        {
+            let mut banner = banner.clone();
+            banner.focus_sizes = [2, 0, 1, 1];
+            let basic_results = sim_until_goal_many(&banner, &goal, 10000);
+
+            let mut goal = goal.clone();
+            goal.units.push(UnitGoal {
+                color: Color::Red,
+                copies: 1,
+                pools: EnumSet::from(Pool::Focus),
+            });
+            let results_needing_multiple_colors = sim_until_goal_many(&banner, &goal, 10000);
+
+            goal.need_all = false;
+            let results_accepting_multiple_colors = sim_until_goal_many(&banner, &goal, 10000);
+            let medians = dbg!(
+                median(&results_accepting_multiple_colors),
+                median(&basic_results),
+                median(&results_needing_multiple_colors),
+            );
+            // Pulling for either of the two is slightly worse than half as expensive as pulling for just one.
+            assert!(medians.0 <= medians.1);
+            assert!(medians.1 <= medians.0 * 2);
+
+            // Pulling for both of the two is less than twice as expensive as pulling for just one, because you
+            // first pull for either and then pull for just one, and that first phase is cheaper.
+            assert!(medians.1 <= medians.2);
+            assert!(medians.2 <= medians.1 * 2);
         }
     }
 

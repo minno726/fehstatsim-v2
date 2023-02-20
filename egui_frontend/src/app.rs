@@ -84,11 +84,14 @@ impl eframe::App for App {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
-        let goal = Goal::Quantity(UnitCountGoal::new(vec![UnitGoal {
-            color: Color::Red,
-            copies: 1,
-            pools: EnumSet::from(Pool::Focus),
-        }]));
+        let goal = Goal::Quantity(UnitCountGoal::new(
+            vec![UnitGoal {
+                color: Color::Red,
+                copies: 1,
+                pools: EnumSet::from(Pool::Focus),
+            }],
+            true,
+        ));
 
         if let Ok(worker_response) = channel.try_recv() {
             *data = Some(worker_response);

@@ -12,6 +12,7 @@ pub enum Goal {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UnitCountGoal {
     pub units: Vec<UnitGoal>,
+    pub need_all: bool,
     colors: EnumSet<Color>,
 }
 
@@ -23,9 +24,10 @@ pub struct UnitGoal {
 }
 
 impl UnitCountGoal {
-    pub fn new(units: Vec<UnitGoal>) -> Self {
+    pub fn new(units: Vec<UnitGoal>, need_all: bool) -> Self {
         let mut result = Self {
             units,
+            need_all,
             colors: EnumSet::new(),
         };
         result.calculate_colors();
@@ -60,7 +62,11 @@ impl UnitCountGoal {
     }
 
     pub fn finished(&self) -> bool {
-        self.units.iter().all(|unit| unit.copies == 0)
+        if self.need_all {
+            self.units.iter().all(|unit| unit.copies == 0)
+        } else {
+            self.units.iter().any(|unit| unit.copies == 0)
+        }
     }
 }
 
