@@ -13,3 +13,7 @@ tracing-wasm = "0.2.1"
 wasm-bindgen-futures = "0.4.34"
 console_error_panic_hook = "0.1.7"
 enumset = "1.0.12"
+gloo-console = "0.2.3"
+serde = { version = "1.0.152", features = ["derive"] }
+instant = "0.1.12"
+gloo-timers = "0.2.6"

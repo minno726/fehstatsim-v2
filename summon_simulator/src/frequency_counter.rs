@@ -1,4 +1,7 @@
-use std::ops::{Deref, DerefMut, Index, IndexMut};
+use std::{
+    mem,
+    ops::{Deref, DerefMut, Index, IndexMut},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +15,17 @@ pub struct FrequencyCounter {
 impl FrequencyCounter {
     pub fn new() -> Self {
         Self { data: Vec::new() }
+    }
+
+    pub fn combine(&mut self, mut other: FrequencyCounter) {
+        if self.data.len() < other.data.len() {
+            mem::swap(&mut self.data, &mut other.data);
+        }
+
+        self.data
+            .iter_mut()
+            .zip(other.data.iter_mut())
+            .for_each(|(a, b)| *a += *b);
     }
 }
 

@@ -1,7 +1,8 @@
 use egui::Vec2;
 use enumset::EnumSet;
+use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
-use std::{fmt::Write, sync::mpsc};
+use std::{fmt::Write, sync::mpsc, time::Duration};
 use summon_simulator::{
     banner::BannerType,
     frequency_counter::FrequencyCounter,
@@ -9,7 +10,7 @@ use summon_simulator::{
     types::{Color, Pool},
 };
 
-use crate::SimWorker;
+use crate::{SimWorker, SimWorkerInput};
 
 fn percentiles(data: &FrequencyCounter, values: &[f32]) -> Vec<u32> {
     let total = data.iter().sum::<u32>();
@@ -52,6 +53,7 @@ pub struct App {
     data: Option<FrequencyCounter>,
     channel: mpsc::Receiver<<SimWorker as Worker>::Output>,
     bridge: WorkerBridge<SimWorker>,
+    is_running: bool,
 }
 
 impl App {
@@ -64,6 +66,7 @@ impl App {
             data: None,
             channel,
             bridge,
+            is_running: false,
         }
     }
 }
@@ -74,6 +77,7 @@ impl eframe::App for App {
             data,
             channel,
             bridge,
+            is_running,
         } = self;
 
         let banner = BannerType::Standard {
@@ -87,15 +91,29 @@ impl eframe::App for App {
         }]));
 
         if let Ok(worker_response) = channel.try_recv() {
-            *data = Some(worker_response.0);
+            *data = Some(worker_response);
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    if ui.button("Run").clicked() {
-                        bridge.send((banner, goal, 20000));
+                    if *is_running {
+                        if ui.button("Stop").clicked() {
+                            log!("Stop clicked");
+                            bridge.send(SimWorkerInput::Stop);
+                            *is_running = false;
+                        }
+                    } else {
+                        if ui.button("Run").clicked() {
+                            log!("Run clicked");
+                            bridge.send(SimWorkerInput::Run {
+                                banner,
+                                goal,
+                                target_interval: Duration::from_millis(1000),
+                            });
+                            *is_running = true;
+                        }
                     }
                     ui.label(
                         data.as_ref()

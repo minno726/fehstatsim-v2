@@ -83,10 +83,36 @@ impl Status {
     }
 }
 
-pub fn sim(banner: &GenericBanner, goal: &Goal, iters: u32) -> FrequencyCounter {
-    match goal {
-        Goal::Quantity(goal) => sim_until_goal_many(banner, goal, iters),
-        Goal::OrbBudget(goal) => sim_orb_budget_many(banner, goal, iters),
+pub struct Sim {
+    banner: GenericBanner,
+    goal: Goal,
+    data: FrequencyCounter,
+}
+
+impl Sim {
+    pub fn new(banner: GenericBanner, goal: Goal) -> Self {
+        Self {
+            banner,
+            goal,
+            data: FrequencyCounter::new(),
+        }
+    }
+
+    pub fn sim(&mut self, iters: u32) {
+        let new_data = match &self.goal {
+            Goal::Quantity(goal) => sim_until_goal_many(&self.banner, goal, iters),
+            Goal::OrbBudget(goal) => sim_orb_budget_many(&self.banner, goal, iters),
+        };
+
+        self.data.combine(new_data);
+    }
+
+    pub fn data(&self) -> &FrequencyCounter {
+        &self.data
+    }
+
+    pub fn into_data(self) -> FrequencyCounter {
+        self.data
     }
 }
 
