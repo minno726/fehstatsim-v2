@@ -1,0 +1,15 @@
+[package]
+name = "egui_frontend"
+version = "0.1.0"
+authors = []
+edition = "2021"
+
+[dependencies]
+egui = "0.21.0"
+eframe = "0.21.0"
+gloo-worker = "0.2.1"
+summon_simulator = { version = "*", path = "../summon_simulator" }
+tracing-wasm = "0.2.1"
+wasm-bindgen-futures = "0.4.34"
+console_error_panic_hook = "0.1.7"
+enumset = "1.0.12"

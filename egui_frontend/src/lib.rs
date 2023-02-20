@@ -1,8 +1,8 @@
+mod app;
+pub use app::App;
+
 use summon_simulator::{
-    banner::GenericBanner,
-    frequency_counter::FrequencyCounter,
-    goal::{Goal, UnitCountGoal},
-    sim::sim,
+    banner::GenericBanner, frequency_counter::FrequencyCounter, goal::Goal, sim::sim,
 };
 
 pub struct SimWorker {}
@@ -10,7 +10,7 @@ pub struct SimWorker {}
 impl gloo_worker::Worker for SimWorker {
     type Message = ();
 
-    type Input = (GenericBanner, UnitCountGoal, u32);
+    type Input = (GenericBanner, Goal, u32);
 
     type Output = (FrequencyCounter,);
 
@@ -31,7 +31,7 @@ impl gloo_worker::Worker for SimWorker {
         id: gloo_worker::HandlerId,
     ) {
         let (banner, goal, iters) = msg;
-        let result = sim(&banner, &Goal::Quantity(goal), iters);
+        let result = sim(&banner, &goal, iters);
         scope.respond(id, (result,));
     }
 }

@@ -1,9 +1,8 @@
 [workspace]
 members = [
     "summon_simulator",
-    "sycamore_frontend",
+    "egui_frontend",
 ]
 
 [profile.bench]
 debug = true
-
