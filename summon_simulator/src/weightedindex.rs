@@ -30,12 +30,10 @@ impl Distribution<Color> for WeightedIndexColor {
             } else {
                 Color::Blue
             }
+        } else if choice < self.thresholds[2] {
+            Color::Green
         } else {
-            if choice < self.thresholds[2] {
-                Color::Green
-            } else {
-                Color::Colorless
-            }
+            Color::Colorless
         }
     }
 }
@@ -65,20 +63,16 @@ impl Distribution<Pool> for WeightedIndexPool {
         let choice = rng.gen::<u32>();
         if choice > self.thresholds[3] {
             Pool::Common
-        } else {
-            if choice < self.thresholds[1] {
-                if choice < self.thresholds[0] {
-                    Pool::Focus
-                } else {
-                    Pool::Fivestar
-                }
+        } else if choice < self.thresholds[1] {
+            if choice < self.thresholds[0] {
+                Pool::Focus
             } else {
-                if choice < self.thresholds[2] {
-                    Pool::FourstarFocus
-                } else {
-                    Pool::FourstarSpecial
-                }
+                Pool::Fivestar
             }
+        } else if choice < self.thresholds[2] {
+            Pool::FourstarFocus
+        } else {
+            Pool::FourstarSpecial
         }
     }
 }

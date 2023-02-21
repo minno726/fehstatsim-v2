@@ -31,12 +31,13 @@ impl DistributionCache {
         for i in 0..=24 {
             pool_dists.push(get_pool_dist(banner.starting_rates(), i, false));
         }
-        let mut color_dists = Vec::new();
-        color_dists.push(get_color_dist(banner.pool_sizes(Pool::Focus)));
-        color_dists.push(get_color_dist(banner.pool_sizes(Pool::Fivestar)));
-        color_dists.push(get_color_dist(banner.pool_sizes(Pool::FourstarFocus)));
-        color_dists.push(get_color_dist(banner.pool_sizes(Pool::FourstarSpecial)));
-        color_dists.push(get_color_dist(banner.pool_sizes(Pool::Common)));
+        let color_dists = vec![
+            get_color_dist(banner.pool_sizes(Pool::Focus)),
+            get_color_dist(banner.pool_sizes(Pool::Fivestar)),
+            get_color_dist(banner.pool_sizes(Pool::FourstarFocus)),
+            get_color_dist(banner.pool_sizes(Pool::FourstarSpecial)),
+            get_color_dist(banner.pool_sizes(Pool::Common)),
+        ];
         Self {
             color_dists,
             pool_dists,
@@ -173,7 +174,7 @@ fn sim_until_goal(
                 }
             }
         }
-        debug_assert!(num_pulled >= 1 && num_pulled <= 5);
+        debug_assert!((1..=5).contains(&num_pulled));
         // Spark, if possible
         if banner.has_spark && status.total_pulled >= 40 && (status.total_pulled - num_pulled) < 40
         {
@@ -252,7 +253,7 @@ fn sim_orb_budget(
                 }
             }
         }
-        debug_assert!(num_pulled >= 1 && num_pulled <= 5);
+        debug_assert!((1..=5).contains(&num_pulled));
         // Spark, if possible
         if banner.has_spark && status.total_pulled >= 40 && (status.total_pulled - num_pulled) < 40
         {
@@ -301,8 +302,8 @@ fn get_pool_dist(
     let mut rates: [f32; 5] = std::array::from_fn(|i| starting_rates[i] as f32 / 100.0);
     let fivestar_total = rates[Pool::Focus as usize] + rates[Pool::Fivestar as usize];
     if pity_incr >= 24 {
-        rates[Pool::Focus as usize] = rates[Pool::Focus as usize] / fivestar_total;
-        rates[Pool::Fivestar as usize] = rates[Pool::Fivestar as usize] / fivestar_total;
+        rates[Pool::Focus as usize] /= fivestar_total;
+        rates[Pool::Fivestar as usize] /= fivestar_total;
         rates[Pool::FourstarFocus as usize] = 0.0;
         rates[Pool::FourstarSpecial as usize] = 0.0;
         rates[Pool::Common as usize] = 0.0;
