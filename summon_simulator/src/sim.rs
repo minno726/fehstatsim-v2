@@ -332,7 +332,7 @@ fn get_pool_dist(
 mod test {
     use enumset::EnumSet;
 
-    use crate::{banner::BannerType, goal::UnitGoal};
+    use crate::{banner::StandardBanner, goal::UnitGoal};
 
     use super::*;
 
@@ -365,7 +365,7 @@ mod test {
     }
 
     fn standard() -> (GenericBanner, Goal) {
-        let banner = BannerType::Standard {
+        let banner = StandardBanner::Standard {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);
@@ -545,7 +545,7 @@ mod test {
 
     #[test]
     fn test_budget() {
-        let banner = BannerType::Standard {
+        let banner = StandardBanner::Standard {
             focus: [1, 1, 1, 1],
         }
         .as_generic_banner(false);

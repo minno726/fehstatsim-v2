@@ -4,13 +4,15 @@ use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
 use std::{fmt::Write, sync::mpsc, time::Duration};
 use summon_simulator::{
-    banner::BannerType,
     frequency_counter::FrequencyCounter,
     goal::{Goal, UnitCountGoal, UnitGoal},
     types::{Color, Pool},
 };
 
-use crate::{SimWorker, SimWorkerInput};
+use crate::{
+    banner::{self, BannerState},
+    SimWorker, SimWorkerInput,
+};
 
 fn percentiles(data: &FrequencyCounter, values: &[f32]) -> Vec<u32> {
     let total = data.iter().sum::<u32>();
@@ -53,6 +55,7 @@ pub struct App {
     data: Option<FrequencyCounter>,
     channel: mpsc::Receiver<<SimWorker as Worker>::Output>,
     bridge: WorkerBridge<SimWorker>,
+    banner: banner::BannerState,
     is_running: bool,
 }
 
@@ -67,6 +70,7 @@ impl App {
             channel,
             bridge,
             is_running: false,
+            banner: BannerState::new(),
         }
     }
 }
@@ -78,12 +82,9 @@ impl eframe::App for App {
             channel,
             bridge,
             is_running,
+            banner,
         } = self;
 
-        let banner = BannerType::Standard {
-            focus: [1, 1, 1, 1],
-        }
-        .as_generic_banner(false);
         let goal = Goal::Quantity(UnitCountGoal::new(
             vec![UnitGoal {
                 color: Color::Red,
@@ -101,6 +102,12 @@ impl eframe::App for App {
             egui::ScrollArea::both()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
+                    egui::CollapsingHeader::new("Banner")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            crate::banner::display_banner(ui, banner);
+                        });
+
                     if *is_running {
                         if ui.button("Stop").clicked() {
                             log!("Stop clicked");
@@ -108,14 +115,19 @@ impl eframe::App for App {
                             *is_running = false;
                         }
                     } else {
-                        if ui.button("Run").clicked() {
-                            log!("Run clicked");
-                            bridge.send(SimWorkerInput::Run {
-                                banner,
-                                goal,
-                                target_interval: Duration::from_millis(1000),
-                            });
-                            *is_running = true;
+                        let button = egui::Button::new("Run");
+                        if let Some(sim_banner) = banner.current.to_sim_banner() {
+                            if ui.add(button).clicked() {
+                                log!("Run clicked");
+                                bridge.send(SimWorkerInput::Run {
+                                    banner: sim_banner,
+                                    goal,
+                                    target_interval: Duration::from_millis(1000),
+                                });
+                                *is_running = true;
+                            }
+                        } else {
+                            ui.add_enabled(false, button);
                         }
                     }
                     ui.label(

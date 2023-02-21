@@ -1,11 +1,10 @@
 mod app;
-use std::time::Duration;
-
+mod banner;
 pub use app::App;
 
-use gloo_console::log;
 use instant::Instant;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use summon_simulator::{
     banner::GenericBanner, frequency_counter::FrequencyCounter, goal::Goal, sim,
 };

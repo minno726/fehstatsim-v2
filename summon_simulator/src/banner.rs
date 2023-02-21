@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::Pool;
 
-pub enum BannerType {
+#[derive(Copy, Clone, Debug)]
+pub enum StandardBanner {
     Standard {
         focus: [u8; 4],
     },
@@ -25,9 +26,9 @@ pub enum BannerType {
     },
 }
 
-impl BannerType {
+impl StandardBanner {
     pub fn as_generic_banner(&self, has_feh_pass: bool) -> GenericBanner {
-        use BannerType::*;
+        use StandardBanner::*;
         match *self {
             Standard { focus } => GenericBanner {
                 starting_rates: (3, 3),
@@ -137,8 +138,8 @@ impl GenericBanner {
     }
 
     pub fn is_valid(&self) -> bool {
-        if self.starting_rates.0 + self.starting_rates.1 > 100
-            || self.starting_rates.0 + self.starting_rates.1 == 0
+        if self.starting_rates.0.saturating_add(self.starting_rates.1) > 100
+            || self.starting_rates.0 == 0
         {
             return false;
         }
@@ -146,6 +147,9 @@ impl GenericBanner {
             if self.fourstar_focus_sizes[i] > self.focus_sizes[i] {
                 return false;
             }
+        }
+        if self.focus_sizes == [0, 0, 0, 0] {
+            return false;
         }
         true
     }
