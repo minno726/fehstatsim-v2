@@ -1,16 +1,13 @@
 use egui::Vec2;
-use enumset::EnumSet;
+
 use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
-use std::{fmt::Write, sync::mpsc, time::Duration};
-use summon_simulator::{
-    frequency_counter::FrequencyCounter,
-    goal::{Goal, UnitCountGoal, UnitGoal},
-    types::{Color, Pool},
-};
+use std::{cell::Cell, fmt::Write, rc::Rc, time::Duration};
+use summon_simulator::frequency_counter::FrequencyCounter;
 
 use crate::{
-    banner::{self, BannerState},
+    banner::{display_banner, BannerState},
+    goal::{display_goal, GoalState},
     SimWorker, SimWorkerInput,
 };
 
@@ -52,25 +49,34 @@ fn data_percentiles_to_string(data: &FrequencyCounter) -> String {
 }
 
 pub struct App {
+    // data
     data: Option<FrequencyCounter>,
-    channel: mpsc::Receiver<<SimWorker as Worker>::Output>,
-    bridge: WorkerBridge<SimWorker>,
-    banner: banner::BannerState,
+    banner: BannerState,
+    goal: GoalState,
+
+    // status
     is_running: bool,
+
+    // communication
+    data_update: Rc<Cell<Option<<SimWorker as Worker>::Output>>>,
+    bridge: WorkerBridge<SimWorker>,
 }
 
 impl App {
     pub fn new(
         _cc: &eframe::CreationContext<'_>,
-        channel: mpsc::Receiver<<SimWorker as Worker>::Output>,
+        data_update: Rc<Cell<Option<<SimWorker as Worker>::Output>>>,
         bridge: WorkerBridge<SimWorker>,
     ) -> Self {
+        let banner = BannerState::new();
+        let goal = GoalState::new(banner.current.clone(), true);
         App {
             data: None,
-            channel,
+            data_update,
             bridge,
             is_running: false,
-            banner: BannerState::new(),
+            banner,
+            goal,
         }
     }
 }
@@ -79,23 +85,17 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let Self {
             data,
-            channel,
+            data_update,
             bridge,
             is_running,
             banner,
+            goal,
         } = self;
 
-        let goal = Goal::Quantity(UnitCountGoal::new(
-            vec![UnitGoal {
-                color: Color::Red,
-                copies: 1,
-                pools: EnumSet::from(Pool::Focus),
-            }],
-            true,
-        ));
-
-        if let Ok(worker_response) = channel.try_recv() {
-            *data = Some(worker_response);
+        if let Some(worker_response) = data_update.replace(None) {
+            if *is_running {
+                *data = Some(worker_response);
+            }
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -105,7 +105,18 @@ impl eframe::App for App {
                     egui::CollapsingHeader::new("Banner")
                         .default_open(true)
                         .show(ui, |ui| {
-                            crate::banner::display_banner(ui, banner);
+                            if display_banner(ui, banner) {
+                                *data = None;
+                                *goal = GoalState::new(banner.current.clone(), goal.is_single);
+                            }
+                        });
+
+                    egui::CollapsingHeader::new("Goal")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            if display_goal(ui, goal) {
+                                *data = None;
+                            }
                         });
 
                     if *is_running {
@@ -117,17 +128,23 @@ impl eframe::App for App {
                     } else {
                         let button = egui::Button::new("Run");
                         if let Some(sim_banner) = banner.current.to_sim_banner() {
-                            if ui.add(button).clicked() {
-                                log!("Run clicked");
-                                bridge.send(SimWorkerInput::Run {
-                                    banner: sim_banner,
-                                    goal,
-                                    target_interval: Duration::from_millis(1000),
-                                });
-                                *is_running = true;
+                            if let Some(sim_goal) = goal.to_sim_goal() {
+                                if ui.add(button).clicked() {
+                                    log!("Run clicked");
+                                    bridge.send(SimWorkerInput::Run {
+                                        banner: sim_banner,
+                                        goal: sim_goal,
+                                        target_interval: Duration::from_millis(500),
+                                    });
+                                    *is_running = true;
+                                }
+                            } else {
+                                ui.add_enabled(false, button)
+                                    .on_disabled_hover_text("Invalid goal.");
                             }
                         } else {
-                            ui.add_enabled(false, button);
+                            ui.add_enabled(false, button)
+                                .on_disabled_hover_text("Invalid banner.");
                         }
                     }
                     ui.label(

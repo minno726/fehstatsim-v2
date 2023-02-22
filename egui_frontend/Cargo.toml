@@ -17,3 +17,4 @@ gloo-console = "0.2.3"
 serde = { version = "1.0.152", features = ["derive"] }
 instant = "0.1.12"
 gloo-timers = "0.2.6"
+egui_extras = "0.21.0"

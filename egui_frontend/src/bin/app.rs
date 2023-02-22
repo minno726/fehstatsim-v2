@@ -1,4 +1,4 @@
-use std::sync::mpsc;
+use std::{cell::Cell, rc::Rc};
 
 use egui_frontend::SimWorker;
 use gloo_worker::Spawnable;
@@ -15,15 +15,16 @@ fn main() {
             web_options,
             Box::new(|cc| {
                 let ctx = cc.egui_ctx.clone();
-                let (sender, receiver) = mpsc::channel();
+                let data_update = Rc::new(Cell::new(None));
+                let sender = data_update.clone();
                 let bridge = SimWorker::spawner()
                     .callback(move |response| {
-                        sender.send(response).unwrap();
+                        sender.set(Some(response));
                         ctx.request_repaint();
                     })
                     .spawn("./worker.js");
 
-                Box::new(egui_frontend::App::new(cc, receiver, bridge))
+                Box::new(egui_frontend::App::new(cc, data_update, bridge))
             }),
         )
         .await

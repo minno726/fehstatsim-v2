@@ -1,5 +1,6 @@
 mod app;
 mod banner;
+mod goal;
 pub use app::App;
 
 use instant::Instant;
