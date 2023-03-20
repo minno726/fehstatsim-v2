@@ -2,6 +2,7 @@
 members = [
     "summon_simulator",
     "egui_frontend",
+    "dioxus_frontend",
 ]
 
 [profile.bench]

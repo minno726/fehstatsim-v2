@@ -96,7 +96,7 @@ impl StandardBanner {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GenericBanner {
     pub starting_rates: (u8, u8),
     pub focus_sizes: [u8; 4],

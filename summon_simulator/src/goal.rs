@@ -70,9 +70,16 @@ impl UnitCountGoal {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
+
+pub enum BudgetGoalLimit {
+    OrbCount(u32),
+    UntilSpark,
+}
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct BudgetGoal {
     pub color: Color,
-    pub limit: u32,
+    pub limit: BudgetGoalLimit,
     pub pools: EnumSet<Pool>,
 }

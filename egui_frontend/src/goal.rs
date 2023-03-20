@@ -2,7 +2,7 @@ use egui::{Ui, Widget};
 use egui_extras::{Column, TableBuilder};
 use enumset::EnumSet;
 use summon_simulator::{
-    goal::{BudgetGoal, Goal, UnitCountGoal, UnitGoal},
+    goal::{BudgetGoal, BudgetGoalLimit, Goal, UnitCountGoal, UnitGoal},
     types::Pool,
 };
 
@@ -71,7 +71,7 @@ impl GoalState {
             } else {
                 Some(Goal::OrbBudget(BudgetGoal {
                     color: unit.color,
-                    limit: self.single.orb_limit,
+                    limit: BudgetGoalLimit::OrbCount(self.single.orb_limit),
                     pools,
                 }))
             }

@@ -3,6 +3,7 @@ mod banner;
 mod goal;
 pub use app::App;
 
+use gloo_console::log;
 use instant::Instant;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -60,11 +61,11 @@ impl gloo_worker::Worker for SimWorker {
                 }
                 match (&mut self.sim, self.target_interval, self.id) {
                     (Some(sim), Some(interval), Some(id)) => {
-                        //log!("Performing ", self.num_iters as f64, " iterations.");
+                        log!("Performing ", self.num_iters as f64, " iterations.");
                         let start = Instant::now();
                         sim.sim(self.num_iters);
                         let duration = Instant::now().duration_since(start);
-                        //log!("Simulation took ", duration.as_secs_f64() * 1000.0, " ms.");
+                        log!("Simulation took ", duration.as_secs_f64() * 1000.0, " ms.");
                         // Don't send back data if the simulation finished too quickly, since
                         // there will be much less data in this set than there will be in the
                         // following ones.

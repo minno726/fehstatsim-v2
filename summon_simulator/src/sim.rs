@@ -4,7 +4,7 @@ use rand_xoshiro::Xoshiro128Plus;
 use crate::{
     banner::GenericBanner,
     frequency_counter::FrequencyCounter,
-    goal::{BudgetGoal, Goal, UnitCountGoal},
+    goal::{BudgetGoal, BudgetGoalLimit, Goal, UnitCountGoal},
     types::{Color, Pool},
     weightedindex::{WeightedIndexColor, WeightedIndexPool},
 };
@@ -235,8 +235,10 @@ fn sim_orb_budget(
                 4 => 3,
                 _ => panic!("Invalid num_pulled"),
             };
-            if status.orbs_spent + next_orb_cost > goal.limit {
-                break;
+            if let BudgetGoalLimit::OrbCount(limit) = goal.limit {
+                if status.orbs_spent + next_orb_cost > limit {
+                    break;
+                }
             }
             if goal.color == color || (num_pulled == 0 && i == 4) {
                 num_pulled += 1;
@@ -258,10 +260,15 @@ fn sim_orb_budget(
         if banner.has_spark && status.total_pulled >= 40 && (status.total_pulled - num_pulled) < 40
         {
             num_goal_units_pulled += 1;
+            if goal.limit == BudgetGoalLimit::UntilSpark {
+                break;
+            }
         }
 
-        if status.orbs_spent + 5 > goal.limit {
-            break;
+        if let BudgetGoalLimit::OrbCount(limit) = goal.limit {
+            if status.orbs_spent + 5 > limit {
+                break;
+            }
         }
     }
 
@@ -552,7 +559,7 @@ mod test {
         .as_generic_banner(false);
         let goal = Goal::OrbBudget(BudgetGoal {
             color: Color::Red,
-            limit: 200,
+            limit: BudgetGoalLimit::OrbCount(200),
             pools: EnumSet::from(Pool::Focus),
         });
         let results = Sim::new(banner.clone(), goal.clone())
@@ -572,7 +579,7 @@ mod test {
         {
             let mut goal = goal.clone();
             match goal {
-                Goal::OrbBudget(ref mut goal) => goal.limit = 1500,
+                Goal::OrbBudget(ref mut goal) => goal.limit = BudgetGoalLimit::OrbCount(1500),
                 Goal::Quantity(_) => {}
             }
             let results_with_many = Sim::new(banner, goal).sim(10000).data().clone();
