@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use dioxus::{html::summary, prelude::*};
+use dioxus::prelude::*;
 use dioxus_frontend::worker::{SimWorker, SimWorkerInput};
 use enumset::EnumSet;
 
@@ -10,7 +10,7 @@ use log::Level;
 use summon_simulator::{
     banner::{GenericBanner, StandardBanner},
     frequency_counter::FrequencyCounter,
-    goal::{BudgetGoal, Goal, UnitCountGoal, UnitGoal},
+    goal::{Goal, UnitCountGoal, UnitGoal},
     types::{Color, Pool},
 };
 
@@ -62,7 +62,6 @@ fn data_percentiles_to_string(data: &FrequencyCounter) -> String {
 }
 
 fn full_data_text(data: &FrequencyCounter) -> impl Iterator<Item = String> {
-    let mut output = String::new();
     let num_samples = data.iter().sum::<u32>();
     let mut total = 0;
     let mut output = vec![];
@@ -153,6 +152,6 @@ fn app(cx: Scope) -> Element {
 }
 
 fn banner_selector(cx: Scope) -> Element {
-    let banner = use_context::<GenericBanner>(cx);
+    let _banner = use_context::<GenericBanner>(cx);
     cx.render(rsx!("todo!"))
 }
