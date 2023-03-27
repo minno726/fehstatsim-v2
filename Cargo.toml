@@ -4,6 +4,7 @@ members = [
     "egui_frontend",
     "dioxus_frontend",
     "sycamore_frontend",
+    "yew_frontend",
 ]
 
 [profile.bench]
