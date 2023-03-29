@@ -3,20 +3,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::{Color, Pool};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Goal {
     Quantity(UnitCountGoal),
     OrbBudget(BudgetGoal),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UnitCountGoal {
     pub units: Vec<UnitGoal>,
     pub need_all: bool,
     colors: EnumSet<Color>,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UnitGoal {
     pub color: Color,
     pub copies: u32,

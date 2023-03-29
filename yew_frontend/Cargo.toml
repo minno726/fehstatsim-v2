@@ -14,5 +14,6 @@ gloo-worker = "0.2.1"
 instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 serde = { version = "1.0.158", features = ["derive"] }
 summon_simulator = { version = "*", path = "../summon_simulator" }
+web-sys = { version = "0.3.61", features = ["Event"] }
 yew = { version = "0.20.0", features = ["csr"] }
 yew-agent = "0.2.0"

@@ -1,26 +1,27 @@
 use std::rc::Rc;
 
-use enumset::EnumSet;
 use instant::Duration;
-use summon_simulator::{
-    banner::StandardBanner,
-    frequency_counter::FrequencyCounter,
-    goal::{Goal, UnitCountGoal, UnitGoal},
-    types::{Color, Pool},
-};
+use summon_simulator::{banner::GenericBanner, frequency_counter::FrequencyCounter, goal::Goal};
 use yew::prelude::*;
 use yew_agent::{Bridge, Bridged};
 
-use crate::agent::{SimWorker, SimWorkerInput};
+use crate::{
+    agent::{SimWorker, SimWorkerInput},
+    banner::{BannerSelect, UiBanner, UiGoal},
+    results::Results,
+};
 
 pub struct App {
     worker: Box<dyn Bridge<SimWorker>>,
     data: Option<FrequencyCounter>,
+    banner: Option<GenericBanner>,
+    goal: Option<Goal>,
     is_running: bool,
 }
 
 pub enum AppMsg {
     RunClicked,
+    BannerChanged(UiBanner, UiGoal),
     DataReceived(FrequencyCounter),
 }
 
@@ -37,24 +38,22 @@ impl Component for App {
         Self {
             worker: SimWorker::bridge(Rc::new(cb)),
             data: None,
+            banner: None,
+            goal: None,
             is_running: false,
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let data_display = if let Some(data) = self.data.as_ref() {
-            html! {
-                <p> { data_percentiles_to_string(data) } </p>
-            }
+        let can_run = if let (Some(banner), Some(_)) = (&self.banner, &self.goal) {
+            banner.is_valid()
         } else {
-            html! {
-                <p> { "Haven't started yet" } </p>
-            }
+            false
         };
-
         html! {
             <>
-            <button onclick={ctx.link().callback(|_| AppMsg::RunClicked)}>{
+            <BannerSelect on_banner_changed={ctx.link().callback(|(banner, goal)| AppMsg::BannerChanged(banner, goal))} />
+            <button disabled={!can_run} onclick={ctx.link().callback(|_| AppMsg::RunClicked)}>{
                 if self.is_running {
                     "Stop"
                 } else {
@@ -62,7 +61,9 @@ impl Component for App {
                 }
             }
             </button>
-            {data_display}
+            <p>{ format!("{:?}", &self.banner) }</p>
+            <p>{ format!("{:?}", &self.goal) }</p>
+            <Results data={self.data.clone()} />
             </>
         }
     }
@@ -79,72 +80,43 @@ impl Component for App {
             }
             AppMsg::RunClicked => {
                 if !self.is_running {
-                    let standard_banner = StandardBanner::Standard {
-                        focus: [1, 1, 1, 1],
-                    }
-                    .as_generic_banner(false);
-                    let standard_goal = Goal::Quantity(UnitCountGoal::new(
-                        vec![UnitGoal {
-                            color: Color::Red,
-                            copies: 1,
-                            pools: EnumSet::from(Pool::Focus),
-                        }],
-                        false,
-                    ));
-
-                    self.worker.send(SimWorkerInput::Run {
-                        banner: standard_banner,
-                        goal: standard_goal,
-                        target_interval: Duration::from_millis(500),
-                    });
-                    self.is_running = true;
-
+                    self.start_sim();
+                } else {
+                    self.stop_sim();
+                }
+                true
+            }
+            AppMsg::BannerChanged(banner, goal) => {
+                let new_banner = banner.to_sim_banner();
+                let new_goal = goal.to_sim_goal();
+                if new_banner != self.banner || new_goal != self.goal {
+                    self.banner = new_banner;
+                    self.goal = new_goal;
+                    self.data = None;
+                    self.stop_sim();
                     true
                 } else {
-                    self.worker.send(SimWorkerInput::Stop);
-                    self.is_running = false;
-                    true
+                    false
                 }
             }
         }
     }
 }
 
-fn percentiles(data: &FrequencyCounter, values: &[f32]) -> Vec<u32> {
-    let total = data.iter().sum::<u32>();
-    let mut cum_total = 0;
-    let mut cur_value_idx = 0;
-    let mut result = Vec::new();
-    for (i, &data_point) in data.iter().enumerate() {
-        cum_total += data_point;
-        if cum_total as f32 > total as f32 * values[cur_value_idx] {
-            result.push(i as u32);
-            cur_value_idx += 1;
-            if cur_value_idx >= values.len() {
-                return result;
-            }
+impl App {
+    fn start_sim(&mut self) {
+        if let (Some(banner), Some(goal)) = (&self.banner, &self.goal) {
+            self.worker.send(SimWorkerInput::Run {
+                banner: banner.clone(),
+                goal: goal.clone(),
+                target_interval: Duration::from_millis(500),
+            });
+            self.is_running = true;
         }
     }
-    while result.len() < values.len() {
-        result.push((data.len() - 1) as u32);
-    }
-    result
-}
 
-fn data_percentiles_to_string(data: &FrequencyCounter) -> String {
-    use std::fmt::Write;
-    let sample_percentiles = [0.25f32, 0.5, 0.75, 0.9, 0.99, 1.0];
-    let num_samples = data.iter().sum::<u32>();
-    let data = percentiles(data, &sample_percentiles);
-    let mut output = format!("({} samples) ", num_samples);
-    for i in 0..sample_percentiles.len() {
-        write!(
-            &mut output,
-            "{}%: {}, ",
-            (sample_percentiles[i] * 100.0).round() as u32,
-            data[i]
-        )
-        .unwrap();
+    fn stop_sim(&mut self) {
+        self.worker.send(SimWorkerInput::Stop);
+        self.is_running = false;
     }
-    output
 }

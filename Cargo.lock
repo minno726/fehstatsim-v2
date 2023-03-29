@@ -4241,6 +4241,7 @@ dependencies = [
  "instant",
  "serde",
  "summon_simulator",
+ "web-sys",
  "yew",
  "yew-agent",
 ]

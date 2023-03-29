@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Associative array of u32 -> u32 with the interface and implementation optimized
 /// for use as a counter for small numbers with a dense distribution.
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FrequencyCounter {
     data: Vec<u32>,
 }
