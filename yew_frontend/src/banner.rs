@@ -4,8 +4,9 @@ use summon_simulator::{
     goal::{BudgetGoal, BudgetGoalLimit, Goal, UnitCountGoal, UnitGoal},
     types::{Color, Pool},
 };
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
+
+use crate::components::select::Select;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UiUnit {
@@ -150,14 +151,14 @@ pub struct BannerSelectProps {
 }
 
 pub struct BannerSelect {
-    banner_select_node_ref: NodeRef,
     selected_banner: UiBanner,
     available_banners: Vec<UiBanner>,
     goal: UiGoal,
 }
 
 pub enum BannerSelectMsg {
-    BannerSelected(String),
+    BannerSelected(UiBanner),
+    RatesSelected((u8, u8)),
 }
 
 impl Component for BannerSelect {
@@ -176,7 +177,6 @@ impl Component for BannerSelect {
             .emit((selected_banner.clone(), goal.clone()));
 
         Self {
-            banner_select_node_ref: NodeRef::default(),
             selected_banner,
             available_banners: banners,
             goal,
@@ -184,55 +184,61 @@ impl Component for BannerSelect {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let banner_names = Some("Custom".to_string())
-            .into_iter()
-            .chain(default_banners().into_iter().map(|banner| banner.name))
-            .collect::<Vec<_>>();
-        let on_banner_select_changed = {
-            let banner_select_node_ref = self.banner_select_node_ref.clone();
-            ctx.link().callback(move |_| {
-                BannerSelectMsg::BannerSelected(
-                    banner_select_node_ref
-                        .cast::<HtmlInputElement>()
-                        .unwrap()
-                        .value(),
-                )
-            })
-        };
         html! {
-            <>
-            <select ref={self.banner_select_node_ref.clone()} onchange={on_banner_select_changed}>
-                { for banner_names.iter().map(|name|
-                    html! { <option selected={&self.selected_banner.name == name}>{ name }</option>
-                }) }
-            </select>
-            </>
+            <div>
+                <Select<UiBanner>
+                    onchange={ctx.link().callback(BannerSelectMsg::BannerSelected)}
+                    values={self.available_banners.clone()}
+                    current={self.selected_banner.clone()}
+                    to_label={Callback::from(|b: UiBanner| b.name.clone())}/>
+                <p>{
+                    self.selected_banner.units.iter().map(|el| &*el.name).collect::<Vec<_>>().join(", ")
+                }</p>
+                <details>
+                    <summary>{ "Details" }</summary>
+                    <fieldset disabled={self.selected_banner.name != "Custom"} style={"border: none;"}>
+                        <Select<(u8, u8)>
+                            onchange={ctx.link().callback(BannerSelectMsg::RatesSelected)}
+                            values={vec![(3, 3), (4, 2), (8, 0), (5, 3), (6, 0)]}
+                            current={self.selected_banner.starting_rates}
+                            to_label={Callback::from(|r| match r {
+                                (3, 3) => "3%/3% (Standard)".into(),
+                                (4, 2) => "4%/2% (Weekly Revival)".into(),
+                                (8, 0) => "8%/0% (Legendary/Mythic)".into(),
+                                (5, 3) => "5%/3% (Hero Fest)".into(),
+                                (6, 0) => "6%/0% (Remix/Double Special)".into(),
+                                _ => "INVALID".into(),
+                            })}
+                            />
+                    </fieldset>
+                </details>
+            </div>
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            BannerSelectMsg::BannerSelected(banner) => {
-                match (self.selected_banner.name == "Custom", banner == "Custom") {
+            BannerSelectMsg::BannerSelected(new_banner) => {
+                match (
+                    self.selected_banner.name == "Custom",
+                    new_banner.name == "Custom",
+                ) {
                     (true, true) => false,
                     (false, true) => {
+                        // Changing from some other preset to "custom" is just renaming it.
                         self.selected_banner.name = "Custom".into();
+                        self.available_banners[0] = self.selected_banner.clone();
                         ctx.props()
                             .on_banner_changed
                             .emit((self.selected_banner.clone(), self.goal.clone()));
                         true
                     }
                     (true, false) => {
-                        let new_banner = self
-                            .available_banners
-                            .iter()
-                            .find(|b| b.name == banner)
-                            .unwrap()
-                            .clone();
                         // Check if we're just switching back from "custom" without
                         // changing anything.
                         self.selected_banner.name = new_banner.name.clone();
                         if self.selected_banner != new_banner {
+                            self.selected_banner = new_banner.clone();
                             self.goal = UiGoal::new(self.selected_banner.clone(), true);
                             ctx.props()
                                 .on_banner_changed
@@ -241,12 +247,7 @@ impl Component for BannerSelect {
                         true
                     }
                     (false, false) => {
-                        self.selected_banner = self
-                            .available_banners
-                            .iter()
-                            .find(|b| b.name == banner)
-                            .unwrap()
-                            .clone();
+                        self.selected_banner = new_banner;
                         self.goal = UiGoal::new(self.selected_banner.clone(), true);
                         ctx.props()
                             .on_banner_changed
@@ -254,6 +255,14 @@ impl Component for BannerSelect {
                         true
                     }
                 }
+            }
+            BannerSelectMsg::RatesSelected(rates) => {
+                self.available_banners[0].starting_rates = rates;
+                self.selected_banner = self.available_banners[0].clone();
+                ctx.props()
+                    .on_banner_changed
+                    .emit((self.selected_banner.clone(), self.goal.clone()));
+                true
             }
         }
     }
