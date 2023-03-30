@@ -5,17 +5,16 @@ use yew::prelude::*;
 
 #[derive(PartialEq, Properties)]
 pub struct SelectProps<T: PartialEq> {
-    pub onchange: Callback<T>,
+    pub onchange: Callback<usize>,
     pub values: Vec<T>,
     pub to_label: Callback<T, String>,
-    pub current: T,
+    pub current: usize,
     #[prop_or(false)]
     pub disabled: bool,
 }
 
 pub struct Select<T> {
     select_ref: NodeRef,
-    current_selection: usize,
     _phantomdata: PhantomData<T>,
 }
 
@@ -27,18 +26,9 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
     type Message = SelectMsg;
     type Properties = SelectProps<T>;
 
-    fn create(ctx: &Context<Self>) -> Self {
-        let current_selection = ctx
-            .props()
-            .values
-            .iter()
-            .enumerate()
-            .find(|(_, el)| **el == ctx.props().current)
-            .unwrap()
-            .0;
+    fn create(_ctx: &Context<Self>) -> Self {
         Self {
             select_ref: NodeRef::default(),
-            current_selection,
             _phantomdata: PhantomData::default(),
         }
     }
@@ -65,9 +55,7 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
                     .expect("SelectMsg::Changed")
                     .selected_index();
                 if idx >= 0 {
-                    ctx.props()
-                        .onchange
-                        .emit(ctx.props().values[idx as usize].clone());
+                    ctx.props().onchange.emit(idx as usize);
                 }
                 false
             }
@@ -78,14 +66,7 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
         let mut rerender = false;
 
         if ctx.props().current != old_props.current {
-            let selected_index = ctx
-                .props()
-                .values
-                .iter()
-                .enumerate()
-                .find(|(_, el)| **el == ctx.props().current)
-                .expect("selected_index")
-                .0;
+            let selected_index = ctx.props().current;
 
             let select_el = self
                 .select_ref
@@ -93,7 +74,6 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
                 .expect("select_el");
             select_el.set_selected_index(selected_index as i32);
 
-            self.current_selection = selected_index;
             rerender |= true;
         }
 
@@ -110,7 +90,10 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
                 .select_ref
                 .cast::<HtmlSelectElement>()
                 .expect("select_el");
-            let selected_label = ctx.props().to_label.emit(ctx.props().current.clone());
+            let selected_label = ctx
+                .props()
+                .to_label
+                .emit(ctx.props().values[ctx.props().current].clone());
             select_el.set_value(&selected_label);
         }
     }
