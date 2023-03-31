@@ -6,7 +6,7 @@ use summon_simulator::{
 };
 use yew::prelude::*;
 
-use crate::components::select::Select;
+use crate::components::{select::Select, toggle::Toggle};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UiUnit {
@@ -53,7 +53,7 @@ pub struct SingleGoal {
     pub is_quantity_goal: bool,
     pub unit_count_goal: u32,
     pub orb_limit: u32,
-    pub unit: String,
+    pub unit: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,7 +72,6 @@ pub struct UiGoal {
 
 impl UiGoal {
     pub fn new(banner: UiBanner, is_single: bool) -> Self {
-        let default_unit = banner.units[0].name.clone();
         let num_possible_units = banner.units.len();
         UiGoal {
             banner,
@@ -81,7 +80,7 @@ impl UiGoal {
                 is_quantity_goal: true,
                 unit_count_goal: 1,
                 orb_limit: 5,
-                unit: default_unit,
+                unit: 0,
             },
             multi: MultiGoal {
                 unit_count_goals: vec![0; num_possible_units],
@@ -92,11 +91,7 @@ impl UiGoal {
 
     pub fn to_sim_goal(&self) -> Option<Goal> {
         if self.is_single {
-            let unit = self
-                .banner
-                .units
-                .iter()
-                .find(|u| u.name == self.single.unit)?;
+            let unit = &self.banner.units[self.single.unit];
             let pools = if unit.fourstar_focus {
                 EnumSet::from(Pool::Focus) | Pool::FourstarFocus
             } else {
@@ -159,6 +154,8 @@ pub struct BannerSelect {
 pub enum BannerSelectMsg {
     BannerSelected(usize),
     RatesSelected((u8, u8)),
+    SparkChanged(bool),
+    ChargesChanged(bool),
 }
 
 impl Component for BannerSelect {
@@ -202,9 +199,17 @@ impl Component for BannerSelect {
                 <p>{
                     selected_banner.units.iter().map(|el| &*el.name).collect::<Vec<_>>().join(", ")
                 }</p>
+                <Toggle
+                    onchange={ctx.link().callback(|val| BannerSelectMsg::SparkChanged(val))}
+                    label={AttrValue::from("Spark?")}
+                    value={selected_banner.has_spark} />
+                <Toggle
+                    onchange={ctx.link().callback(|val| BannerSelectMsg::ChargesChanged(val))}
+                    label={AttrValue::from("Focus charges?")}
+                    value={selected_banner.has_focus_charges} />
                 <details>
                     <summary>{ "Details" }</summary>
-                    <fieldset disabled={selected_banner.name != "Custom"} style={"border: none;"}>
+                    <fieldset disabled={self.selected_banner != 0} style={"border: none;"}>
                         <Select<(u8, u8)>
                             values={possible_rates.clone()}
                             onchange={ctx.link().callback(move |i| BannerSelectMsg::RatesSelected(possible_rates[i]))}
@@ -231,13 +236,10 @@ impl Component for BannerSelect {
                     (true, true) => false,
                     (false, true) => {
                         // Changing from some other preset to "custom" is just renaming it.
-                        self.available_banners[0] =
-                            self.available_banners[self.selected_banner].clone();
+                        self.available_banners[0] = self.cur_banner().clone();
                         self.available_banners[0].name = "Custom".into();
                         self.selected_banner = 0;
-                        ctx.props()
-                            .on_banner_changed
-                            .emit((self.available_banners[0].clone(), self.goal.clone()));
+                        self.emit_change(ctx);
                         true
                     }
                     (true, false) => {
@@ -247,38 +249,52 @@ impl Component for BannerSelect {
                         new_banner_copy.name = "Custom".into();
                         if self.available_banners[0] != new_banner_copy {
                             self.selected_banner = new_banner;
-                            self.goal = UiGoal::new(
-                                self.available_banners[self.selected_banner].clone(),
-                                true,
-                            );
-                            ctx.props().on_banner_changed.emit((
-                                self.available_banners[self.selected_banner].clone(),
-                                self.goal.clone(),
-                            ));
+                            self.reset_goal();
+                            self.emit_change(ctx);
                         }
                         true
                     }
                     (false, false) => {
                         self.selected_banner = new_banner;
-                        self.goal =
-                            UiGoal::new(self.available_banners[self.selected_banner].clone(), true);
-                        ctx.props().on_banner_changed.emit((
-                            self.available_banners[self.selected_banner].clone(),
-                            self.goal.clone(),
-                        ));
+                        self.reset_goal();
+                        self.emit_change(ctx);
                         true
                     }
                 }
             }
             BannerSelectMsg::RatesSelected(rates) => {
-                self.available_banners[0].starting_rates = rates;
-                ctx.props().on_banner_changed.emit((
-                    self.available_banners[self.selected_banner].clone(),
-                    self.goal.clone(),
-                ));
+                self.cur_banner().starting_rates = rates;
+                self.emit_change(ctx);
+                true
+            }
+            BannerSelectMsg::SparkChanged(val) => {
+                self.cur_banner().has_spark = val;
+                self.emit_change(ctx);
+                true
+            }
+            BannerSelectMsg::ChargesChanged(val) => {
+                self.cur_banner().has_focus_charges = val;
+                self.emit_change(ctx);
                 true
             }
         }
+    }
+}
+
+impl BannerSelect {
+    fn cur_banner(&mut self) -> &mut UiBanner {
+        &mut self.available_banners[self.selected_banner]
+    }
+
+    fn emit_change(&self, ctx: &Context<BannerSelect>) {
+        ctx.props().on_banner_changed.emit((
+            self.available_banners[self.selected_banner].clone(),
+            self.goal.clone(),
+        ));
+    }
+
+    fn reset_goal(&mut self) {
+        self.goal = UiGoal::new(self.cur_banner().clone(), true);
     }
 }
 
