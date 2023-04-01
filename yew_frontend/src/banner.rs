@@ -195,8 +195,8 @@ impl Component for BannerSelect {
             <div>
                 <Select<UiBanner>
                     onchange={ctx.link().callback(BannerSelectMsg::BannerSelected)}
-                    values={self.available_banners.clone()}
-                    current={self.selected_banner}
+                    options={self.available_banners.clone()}
+                    value={self.selected_banner}
                     to_label={Callback::from(|b: UiBanner| b.name.clone())}/>
                 <p>{
                     selected_banner.units.iter().map(|el| &*el.name).collect::<Vec<_>>().join(", ")
@@ -213,9 +213,9 @@ impl Component for BannerSelect {
                     <summary>{ "Details" }</summary>
                     <fieldset disabled={self.selected_banner != 0} style={"border: none;"}>
                         <Select<(u8, u8)>
-                            values={possible_rates.clone()}
+                            options={possible_rates.clone()}
                             onchange={ctx.link().callback(move |i| BannerSelectMsg::RatesSelected(possible_rates[i]))}
-                            current={current_rates_idx}
+                            value={current_rates_idx}
                             to_label={Callback::from(|r| match r {
                                 (3, 3) => "3%/3% (Standard)".into(),
                                 (4, 2) => "4%/2% (Weekly Revival)".into(),

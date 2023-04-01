@@ -6,9 +6,9 @@ use yew::prelude::*;
 #[derive(PartialEq, Properties)]
 pub struct SelectProps<T: PartialEq> {
     pub onchange: Callback<usize>,
-    pub values: Vec<T>,
+    pub options: Vec<T>,
     pub to_label: Callback<T, String>,
-    pub current: usize,
+    pub value: usize,
     #[prop_or(false)]
     pub disabled: bool,
 }
@@ -39,7 +39,7 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
                 ref={self.select_ref.clone()}
                 onchange={ctx.link().callback(|_| SelectMsg::Changed)}
                 disabled={ctx.props().disabled}>
-                { for ctx.props().values.iter().map(|s| html! {
+                { for ctx.props().options.iter().map(|s| html! {
                     <option>{ ctx.props().to_label.emit(s.clone()) }</option>
                 }) }
             </select>
@@ -65,8 +65,8 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         let mut rerender = false;
 
-        if ctx.props().current != old_props.current {
-            let selected_index = ctx.props().current;
+        if ctx.props().value != old_props.value {
+            let selected_index = ctx.props().value;
 
             let select_el = self
                 .select_ref
@@ -93,7 +93,7 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
             let selected_label = ctx
                 .props()
                 .to_label
-                .emit(ctx.props().values[ctx.props().current].clone());
+                .emit(ctx.props().options[ctx.props().value].clone());
             select_el.set_value(&selected_label);
         }
     }
