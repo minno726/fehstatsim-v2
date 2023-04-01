@@ -193,11 +193,10 @@ impl Component for BannerSelect {
             .0;
         html! {
             <div>
-                <Select<UiBanner>
+                <Select
                     onchange={ctx.link().callback(BannerSelectMsg::BannerSelected)}
-                    options={self.available_banners.clone()}
-                    value={self.selected_banner}
-                    to_label={Callback::from(|b: UiBanner| b.name.clone())}/>
+                    labels={self.available_banners.iter().map(|b| b.name.clone()).collect::<Vec<_>>()}
+                    value={self.selected_banner}/>
                 <p>{
                     selected_banner.units.iter().map(|el| &*el.name).collect::<Vec<_>>().join(", ")
                 }</p>
@@ -212,19 +211,16 @@ impl Component for BannerSelect {
                 <details>
                     <summary>{ "Details" }</summary>
                     <fieldset disabled={self.selected_banner != 0} style={"border: none;"}>
-                        <Select<(u8, u8)>
-                            options={possible_rates.clone()}
+                        <Select
                             onchange={ctx.link().callback(move |i| BannerSelectMsg::RatesSelected(possible_rates[i]))}
-                            value={current_rates_idx}
-                            to_label={Callback::from(|r| match r {
-                                (3, 3) => "3%/3% (Standard)".into(),
-                                (4, 2) => "4%/2% (Weekly Revival)".into(),
-                                (8, 0) => "8%/0% (Legendary/Mythic)".into(),
-                                (5, 3) => "5%/3% (Hero Fest)".into(),
-                                (6, 0) => "6%/0% (Remix/Double Special)".into(),
-                                _ => "INVALID".into(),
-                            })}
-                            />
+                            labels={vec![
+                                "3%/3% (Standard)".into(),
+                                "4%/2% (Weekly Revival)".into(),
+                                "8%/0% (Legendary/Mythic)".into(),
+                                "5%/3% (Hero Fest)".into(),
+                                "6%/0% (Remix/Double Special)".into(),
+                            ]}
+                            value={current_rates_idx}/>
                         <ul>
                             { for selected_banner.units.iter().enumerate().map(|(i, unit)| {
                                 html! { <li><p>{ &*unit.name }</p><button onclick={ctx.link().callback(move |_| BannerSelectMsg::DeleteUnit(i))}>{ "X" }</button></li> }

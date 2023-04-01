@@ -1,35 +1,30 @@
-use std::marker::PhantomData;
-
 use web_sys::HtmlSelectElement;
 use yew::prelude::*;
 
 #[derive(PartialEq, Properties)]
-pub struct SelectProps<T: PartialEq> {
+pub struct SelectProps {
     pub onchange: Callback<usize>,
-    pub options: Vec<T>,
-    pub to_label: Callback<T, String>,
+    pub labels: Vec<String>,
     pub value: usize,
     #[prop_or(false)]
     pub disabled: bool,
 }
 
-pub struct Select<T> {
+pub struct Select {
     select_ref: NodeRef,
-    _phantomdata: PhantomData<T>,
 }
 
 pub enum SelectMsg {
     Changed,
 }
 
-impl<T: 'static + PartialEq + Clone> Component for Select<T> {
+impl Component for Select {
     type Message = SelectMsg;
-    type Properties = SelectProps<T>;
+    type Properties = SelectProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
         Self {
             select_ref: NodeRef::default(),
-            _phantomdata: PhantomData::default(),
         }
     }
 
@@ -39,8 +34,8 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
                 ref={self.select_ref.clone()}
                 onchange={ctx.link().callback(|_| SelectMsg::Changed)}
                 disabled={ctx.props().disabled}>
-                { for ctx.props().options.iter().map(|s| html! {
-                    <option>{ ctx.props().to_label.emit(s.clone()) }</option>
+                { for ctx.props().labels.iter().map(|s| html! {
+                    <option>{ s }</option>
                 }) }
             </select>
         }
@@ -90,11 +85,7 @@ impl<T: 'static + PartialEq + Clone> Component for Select<T> {
                 .select_ref
                 .cast::<HtmlSelectElement>()
                 .expect("select_el");
-            let selected_label = ctx
-                .props()
-                .to_label
-                .emit(ctx.props().options[ctx.props().value].clone());
-            select_el.set_value(&selected_label);
+            select_el.set_selected_index(ctx.props().value as i32);
         }
     }
 }
