@@ -156,6 +156,8 @@ pub enum BannerSelectMsg {
     RatesSelected((u8, u8)),
     SparkChanged(bool),
     ChargesChanged(bool),
+    NewUnit,
+    DeleteUnit(usize),
 }
 
 impl Component for BannerSelect {
@@ -223,6 +225,12 @@ impl Component for BannerSelect {
                                 _ => "INVALID".into(),
                             })}
                             />
+                        <ul>
+                            { for selected_banner.units.iter().enumerate().map(|(i, unit)| {
+                                html! { <li><p>{ &*unit.name }</p><button onclick={ctx.link().callback(move |_| BannerSelectMsg::DeleteUnit(i))}>{ "X" }</button></li> }
+                            }) }
+                        </ul>
+                        <button onclick={ctx.link().callback(|_| BannerSelectMsg::NewUnit)}>{ "+" }</button>
                     </fieldset>
                 </details>
             </div>
@@ -274,6 +282,30 @@ impl Component for BannerSelect {
             }
             BannerSelectMsg::ChargesChanged(val) => {
                 self.cur_banner().has_focus_charges = val;
+                self.emit_change(ctx);
+                true
+            }
+            BannerSelectMsg::NewUnit => {
+                let mut highest_num = 0;
+                for unit in &self.cur_banner().units {
+                    if let Some((_, part)) = unit.name.split_once(" ") {
+                        if let Ok(n) = part.parse::<u32>() {
+                            highest_num = n;
+                        }
+                    }
+                }
+                self.cur_banner().units.push(UiUnit {
+                    name: format!("Red {}", highest_num + 1),
+                    color: Color::Red,
+                    fourstar_focus: false,
+                });
+                self.reset_goal();
+                self.emit_change(ctx);
+                true
+            }
+            BannerSelectMsg::DeleteUnit(idx) => {
+                self.cur_banner().units.remove(idx);
+                self.reset_goal();
                 self.emit_change(ctx);
                 true
             }
