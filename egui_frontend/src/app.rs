@@ -1,5 +1,3 @@
-use egui::Vec2;
-
 use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
 use std::{cell::Cell, fmt::Write, rc::Rc, time::Duration};
@@ -154,9 +152,5 @@ impl eframe::App for App {
                     );
                 })
         });
-    }
-
-    fn max_size_points(&self) -> Vec2 {
-        Vec2::new(800.0, f32::INFINITY)
     }
 }

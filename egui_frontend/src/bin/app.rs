@@ -10,24 +10,25 @@ fn main() {
     let web_options = eframe::WebOptions::default();
 
     wasm_bindgen_futures::spawn_local(async {
-        eframe::start_web(
-            "the_canvas_id",
-            web_options,
-            Box::new(|cc| {
-                let ctx = cc.egui_ctx.clone();
-                let data_update = Rc::new(Cell::new(None));
-                let sender = data_update.clone();
-                let bridge = SimWorker::spawner()
-                    .callback(move |response| {
-                        sender.set(Some(response));
-                        ctx.request_repaint();
-                    })
-                    .spawn("./worker.js");
+        eframe::WebRunner::new()
+            .start(
+                "the_canvas_id",
+                web_options,
+                Box::new(|cc| {
+                    let ctx = cc.egui_ctx.clone();
+                    let data_update = Rc::new(Cell::new(None));
+                    let sender = data_update.clone();
+                    let bridge = SimWorker::spawner()
+                        .callback(move |response| {
+                            sender.set(Some(response));
+                            ctx.request_repaint();
+                        })
+                        .spawn("./worker.js");
 
-                Box::new(egui_frontend::App::new(cc, data_update, bridge))
-            }),
-        )
-        .await
-        .expect("failed to start eframe");
+                    Box::new(egui_frontend::App::new(cc, data_update, bridge))
+                }),
+            )
+            .await
+            .expect("failed to start eframe");
     });
 }

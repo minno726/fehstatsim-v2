@@ -184,7 +184,8 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
             .column(Column::exact(200.0))
             .column(Column::remainder())
             .body(|body| {
-                body.rows(20.0, state.banner.units.len(), |i, mut row| {
+                body.rows(20.0, state.banner.units.len(), |mut row| {
+                    let i = row.index();
                     row.col(|ui| {
                         let mut enabled = state.multi.unit_count_goals[i] > 0;
                         if ui
