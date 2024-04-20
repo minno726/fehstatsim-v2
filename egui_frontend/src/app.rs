@@ -40,6 +40,24 @@ pub(crate) fn with_colored_dot(text: &str, color: Color, font: FontId) -> Layout
     job
 }
 
+struct Status {
+    is_running: bool,
+    time_started: Option<Instant>,
+    last_data_received: Option<Instant>,
+}
+
+impl Status {
+    fn sim_started(&mut self) {
+        self.is_running = true;
+        self.time_started = Some(Instant::now());
+        self.last_data_received = None;
+    }
+
+    fn sim_ended(&mut self) {
+        self.is_running = false;
+    }
+}
+
 pub struct App {
     // data
     banner: BannerState,
@@ -47,9 +65,7 @@ pub struct App {
     results: ResultsState,
 
     // status
-    is_running: bool,
-    time_started: Option<Instant>,
-    last_data_received: Option<Instant>,
+    status: Status,
 
     // communication
     data_update: Rc<Cell<Option<<SimWorker as Worker>::Output>>>,
@@ -69,9 +85,11 @@ impl App {
         App {
             data_update,
             bridge,
-            is_running: false,
-            time_started: None,
-            last_data_received: None,
+            status: Status {
+                is_running: false,
+                time_started: None,
+                last_data_received: None,
+            },
             banner,
             goal,
             results,
@@ -101,18 +119,16 @@ impl eframe::App for App {
         let Self {
             data_update,
             bridge,
-            is_running,
-            time_started,
-            last_data_received,
+            status,
             banner,
             goal,
             results,
         } = self;
 
         if let Some(worker_response) = data_update.replace(None) {
-            if *is_running && results.data != Data::Invalidated {
+            if status.is_running && results.data != Data::Invalidated {
                 results.data = Data::Present(worker_response);
-                *last_data_received = Some(Instant::now());
+                status.last_data_received = Some(Instant::now());
             }
         }
 
@@ -136,17 +152,17 @@ impl eframe::App for App {
                             if display_goal(ui, goal) {
                                 bridge.send(SimWorkerInput::Stop);
                                 results.data = Data::Invalidated;
-                                *is_running = false;
+                                status.sim_ended();
                             }
                         });
 
                     ui.horizontal(|ui| {
-                        if *is_running {
+                        if status.is_running {
                             ui.horizontal(|ui| {
                                 if ui.button("Stop").clicked() {
                                     log!("Stop clicked");
                                     bridge.send(SimWorkerInput::Stop);
-                                    *is_running = false;
+                                    status.sim_ended();
                                 }
                             });
                         } else {
@@ -160,9 +176,7 @@ impl eframe::App for App {
                                             goal: sim_goal,
                                             target_interval: Duration::from_millis(500),
                                         });
-                                        *is_running = true;
-                                        *time_started = Some(Instant::now());
-                                        *last_data_received = None;
+                                        status.sim_started();
                                         if results.data == Data::Invalidated {
                                             results.data = Data::Waiting;
                                         }
@@ -177,9 +191,9 @@ impl eframe::App for App {
                             }
                         }
                         if let Some((elapsed, num_samples)) = (|| {
-                            let elapsed = last_data_received
-                                .unwrap_or_else(|| Instant::now())
-                                .checked_duration_since((*time_started)?)?;
+                            let elapsed = status
+                                .last_data_received?
+                                .checked_duration_since(status.time_started?)?;
                             let num_samples = results.data.data()?.iter().sum::<u32>();
                             Some((elapsed, num_samples))
                         })() {
