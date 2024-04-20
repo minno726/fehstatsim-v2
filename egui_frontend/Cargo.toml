@@ -15,6 +15,6 @@ console_error_panic_hook = "0.1.7"
 enumset = "1.0.12"
 gloo-console = "0.3.0"
 serde = { version = "1.0.152", features = ["derive"] }
-instant = "0.1.12"
+instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 gloo-timers = "0.3.0"
 egui_extras = "0.27.2"

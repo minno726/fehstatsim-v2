@@ -1,3 +1,4 @@
+use egui::RichText;
 use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
 use std::{cell::Cell, fmt::Write, rc::Rc, time::Duration};
@@ -35,9 +36,9 @@ fn data_percentiles_to_string(data: &FrequencyCounter) -> String {
     let data = percentiles(data, &sample_percentiles);
     let mut output = String::new();
     for i in 0..sample_percentiles.len() {
-        write!(
+        writeln!(
             &mut output,
-            "{}%: {}, ",
+            "{}%: {}",
             (sample_percentiles[i] * 100.0).round() as u32,
             data[i]
         )
@@ -62,10 +63,11 @@ pub struct App {
 
 impl App {
     pub fn new(
-        _cc: &eframe::CreationContext<'_>,
+        cc: &eframe::CreationContext<'_>,
         data_update: Rc<Cell<Option<<SimWorker as Worker>::Output>>>,
         bridge: WorkerBridge<SimWorker>,
     ) -> Self {
+        App::set_text_styles(cc);
         let banner = BannerState::new();
         let goal = GoalState::new(banner.current.clone(), true);
         App {
@@ -76,6 +78,24 @@ impl App {
             banner,
             goal,
         }
+    }
+
+    fn set_text_styles(ctx: &eframe::CreationContext<'_>) {
+        use egui::FontFamily::Proportional;
+        use egui::FontId;
+        use egui::TextStyle::*;
+        ctx.egui_ctx.style_mut(|style| {
+            style.text_styles = [
+                (Heading, FontId::new(30.0, Proportional)),
+                (Name("Heading2".into()), FontId::new(25.0, Proportional)),
+                (Name("Context".into()), FontId::new(23.0, Proportional)),
+                (Body, FontId::new(18.0, Proportional)),
+                (Monospace, FontId::new(18.0, Proportional)),
+                (Button, FontId::new(18.0, Proportional)),
+                (Small, FontId::new(14.0, Proportional)),
+            ]
+            .into();
+        });
     }
 }
 
@@ -100,7 +120,7 @@ impl eframe::App for App {
             egui::ScrollArea::both()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    egui::CollapsingHeader::new("Banner")
+                    egui::CollapsingHeader::new(RichText::new("Banner").heading())
                         .default_open(true)
                         .show(ui, |ui| {
                             if display_banner(ui, banner) {
@@ -109,7 +129,7 @@ impl eframe::App for App {
                             }
                         });
 
-                    egui::CollapsingHeader::new("Goal")
+                    egui::CollapsingHeader::new(RichText::new("Goal").heading())
                         .default_open(true)
                         .show(ui, |ui| {
                             if display_goal(ui, goal) {

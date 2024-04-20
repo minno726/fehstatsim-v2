@@ -53,7 +53,6 @@ impl gloo_worker::Worker for SimWorker {
     }
 
     fn update(&mut self, scope: &gloo_worker::WorkerScope<Self>, msg: Self::Message) {
-        let _scope = scope;
         match msg {
             SimWorkerMessage::Continue => {
                 if !self.running {

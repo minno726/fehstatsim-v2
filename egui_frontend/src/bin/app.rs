@@ -1,5 +1,7 @@
 use std::{cell::Cell, rc::Rc};
 
+use eframe::WebOptions;
+use egui::Vec2;
 use egui_frontend::SimWorker;
 use gloo_worker::Spawnable;
 
@@ -7,7 +9,10 @@ fn main() {
     console_error_panic_hook::set_once();
     tracing_wasm::set_as_global_default();
 
-    let web_options = eframe::WebOptions::default();
+    let web_options = WebOptions {
+        max_size_points: Vec2::new(800.0, f32::INFINITY),
+        ..WebOptions::default()
+    };
 
     wasm_bindgen_futures::spawn_local(async {
         eframe::WebRunner::new()

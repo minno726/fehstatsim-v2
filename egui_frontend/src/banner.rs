@@ -324,36 +324,7 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
         banner_changed = true;
     }
 
-    fn rates_to_text(rates: (u8, u8)) -> &'static str {
-        match rates {
-            (3, 3) => "3%/3% (Standard)",
-            (4, 2) => "4%/2% (Weekly Revival)",
-            (8, 0) => "8%/0% (Legendary/Mythic)",
-            (5, 3) => "5%/3% (Hero Fest)",
-            (6, 0) => "6%/0% (Remix/Double Special)",
-            _ => "ERROR: invalid starting rates",
-        }
-    }
-
-    let is_custom_banner = state.current.name == "Custom";
-    ui.add_enabled_ui(is_custom_banner, |ui| {
-        let starting_rates_before = state.current.starting_rates;
-        egui::ComboBox::from_label("Rate")
-            .selected_text(rates_to_text(state.current.starting_rates))
-            .show_ui(ui, |ui| {
-                for rate in [(3, 3), (4, 2), (8, 0), (5, 3), (6, 0)] {
-                    ui.selectable_value(
-                        &mut state.current.starting_rates,
-                        rate,
-                        rates_to_text(rate),
-                    );
-                }
-            });
-        if state.current.starting_rates != starting_rates_before {
-            banner_changed = true;
-        }
-    });
-    let unit_list_open = match (
+    let details_open = match (
         banner_name_before == "Custom",
         state.current.name == "Custom",
     ) {
@@ -363,14 +334,44 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
         // Open when switching to a custom banner
         (false, true) => Some(true),
     };
-    egui::CollapsingHeader::new("Unit list")
-        .open(unit_list_open)
+
+    egui::CollapsingHeader::new("Details")
+        .open(details_open)
         .show(ui, |ui| {
+            fn rates_to_text(rates: (u8, u8)) -> &'static str {
+                match rates {
+                    (3, 3) => "3%/3% (Standard)",
+                    (4, 2) => "4%/2% (Weekly Revival)",
+                    (8, 0) => "8%/0% (Legendary/Mythic)",
+                    (5, 3) => "5%/3% (Hero Fest)",
+                    (6, 0) => "6%/0% (Remix/Double Special)",
+                    _ => "ERROR: invalid starting rates",
+                }
+            }
+
+            let is_custom_banner = state.current.name == "Custom";
+            ui.add_enabled_ui(is_custom_banner, |ui| {
+                let starting_rates_before = state.current.starting_rates;
+                egui::ComboBox::from_label("Rate")
+                    .selected_text(rates_to_text(state.current.starting_rates))
+                    .show_ui(ui, |ui| {
+                        for rate in [(3, 3), (4, 2), (8, 0), (5, 3), (6, 0)] {
+                            ui.selectable_value(
+                                &mut state.current.starting_rates,
+                                rate,
+                                rates_to_text(rate),
+                            );
+                        }
+                    });
+                if state.current.starting_rates != starting_rates_before {
+                    banner_changed = true;
+                }
+            });
             ui.add_enabled_ui(is_custom_banner, |ui| {
                 if display_unit_list(ui, &mut state.current.units) {
                     banner_changed = true;
                 }
-                if ui.button("+").clicked() {
+                if ui.button("+ Add another unit").clicked() {
                     banner_changed = true;
                     state.current.units.push(UiUnit {
                         name: "New Unit".into(),
@@ -380,7 +381,6 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
                 }
             });
         });
-
     banner_changed
 }
 
@@ -390,28 +390,34 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
     let mut to_delete = Vec::new();
     for (i, unit) in units.iter_mut().enumerate() {
         ui.group(|ui| {
-            if ui.button("X").clicked() {
-                units_changed = true;
-                to_delete.push(i);
-            }
-            if ui.text_edit_singleline(&mut unit.name).changed() {
-                units_changed = true;
-            }
-            let unit_color_before = unit.color;
-            egui::ComboBox::from_id_source((i, "display_unit_list"))
-                .selected_text(format!("{:?}", unit.color))
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut unit.color, Color::Red, "Red");
-                    ui.selectable_value(&mut unit.color, Color::Blue, "Blue");
-                    ui.selectable_value(&mut unit.color, Color::Green, "Green");
-                    ui.selectable_value(&mut unit.color, Color::Colorless, "Colorless");
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                    if ui.text_edit_singleline(&mut unit.name).changed() {
+                        units_changed = true;
+                    }
                 });
-            if unit.color != unit_color_before {
-                units_changed = true;
-            }
-            if ui.checkbox(&mut unit.fourstar_focus, "4* focus?").changed() {
-                units_changed = true;
-            }
+                if ui.button("X").clicked() {
+                    units_changed = true;
+                    to_delete.push(i);
+                }
+            });
+            ui.horizontal(|ui| {
+                let unit_color_before = unit.color;
+                egui::ComboBox::from_id_source((i, "display_unit_list"))
+                    .selected_text(format!("{:?}", unit.color))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut unit.color, Color::Red, "Red");
+                        ui.selectable_value(&mut unit.color, Color::Blue, "Blue");
+                        ui.selectable_value(&mut unit.color, Color::Green, "Green");
+                        ui.selectable_value(&mut unit.color, Color::Colorless, "Colorless");
+                    });
+                if unit.color != unit_color_before {
+                    units_changed = true;
+                }
+                if ui.checkbox(&mut unit.fourstar_focus, "4* focus?").changed() {
+                    units_changed = true;
+                }
+            });
         });
     }
     for &i in to_delete.iter().rev() {
