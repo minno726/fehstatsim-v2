@@ -1,4 +1,4 @@
-use egui::{TextStyle, Ui, Widget};
+use egui::{text::TextWrapping, TextStyle, Ui, Widget};
 use egui_extras::{Column, TableBuilder};
 use enumset::EnumSet;
 use summon_simulator::{
@@ -201,19 +201,21 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
             .column(Column::exact(200.0))
             .column(Column::remainder())
             .body(|body| {
-                body.rows(20.0, state.banner.units.len(), |mut row| {
+                body.rows(24.0, state.banner.units.len(), |mut row| {
                     let i = row.index();
                     row.col(|ui| {
                         let mut enabled = state.multi.unit_count_goals[i] > 0;
+                        let mut cb_text = with_colored_dot(
+                            &state.banner.units[i].name,
+                            state.banner.units[i].color,
+                            TextStyle::Body.resolve(&ui.ctx().style()),
+                        );
+                        cb_text.wrap = TextWrapping::truncate_at_width(200.0);
                         if ui
                             .checkbox(
                                 &mut enabled,
                                 //&state.banner.units[i].name,
-                                with_colored_dot(
-                                    &state.banner.units[i].name,
-                                    state.banner.units[i].color,
-                                    TextStyle::Body.resolve(&ui.ctx().style()),
-                                ),
+                                cb_text,
                             )
                             .changed()
                         {

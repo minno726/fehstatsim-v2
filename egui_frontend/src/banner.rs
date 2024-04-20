@@ -308,6 +308,7 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
     let mut custom_banner = state.current.clone();
     custom_banner.name = "Custom".into();
     let banner_name_before = state.current.name.clone();
+
     egui::ComboBox::from_label("Banner")
         .selected_text(state.current.name.clone())
         .show_ui(ui, |ui| {
