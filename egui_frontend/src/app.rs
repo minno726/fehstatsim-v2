@@ -136,6 +136,17 @@ impl eframe::App for App {
             egui::ScrollArea::both()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
+                    egui::CollapsingHeader::new("WORK IN PROGRESS")
+                        .show(ui, |ui| {
+                            ui.horizontal_wrapped(|ui| {
+                                ui.spacing_mut().item_spacing.x = 0.0;
+                                ui.label("This version of the simulator is incomplete. It has some useful additions, but is also missing some important features that the old one has. You can access the old summon simulator at ");
+                                ui.hyperlink("https://fehstatsim-v1.fullyconcentrated.net/");
+                                ui.label("\nIf you have any comments or suggestions, contact me on reddit at ");
+                                ui.hyperlink_to("/u/minno", "https://www.reddit.com/message/compose?to=minno&subject=new%20fehstatsim%20suggestions");
+                            });
+                        });
+
                     egui::CollapsingHeader::new(RichText::new("Banner").heading())
                         .default_open(true)
                         .show(ui, |ui| {
