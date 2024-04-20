@@ -1,5 +1,6 @@
 [workspace]
 members = ["summon_simulator", "egui_frontend"]
+resolver = "2"
 
 [profile.bench]
 debug = true
