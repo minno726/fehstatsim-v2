@@ -9,7 +9,7 @@ use summon_simulator::types::Color;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::{
-    banner::{display_banner, BannerState, UiBanner},
+    banner::{display_banner, BannerState, InvalidationResult, UiBanner},
     goal::{display_goal, GoalState},
     results::{display_results, Data, ResultsState},
     SimWorker, SimWorkerInput,
@@ -189,10 +189,17 @@ impl eframe::App for App {
                     egui::CollapsingHeader::new(RichText::new("Banner").heading())
                         .default_open(true)
                         .show(ui, |ui| {
-                            if display_banner(ui, banner) {
-                                bridge.send(SimWorkerInput::Stop);
-                                results.data = Data::Invalidated;
-                                *goal = GoalState::new(banner.current.clone(), goal.is_single);
+                            match display_banner(ui, banner){
+                                InvalidationResult::NoChange => {},
+                                InvalidationResult::Nothing => {goal.set_banner(banner.current.clone())},
+                                InvalidationResult::ResultsOnly => {bridge.send(SimWorkerInput::Stop);
+                                    results.data = Data::Invalidated;
+                                    goal.set_banner(banner.current.clone())},
+                                InvalidationResult::Everything => {
+                                    bridge.send(SimWorkerInput::Stop);
+                                    results.data = Data::Invalidated;
+                                    *goal = GoalState::new(banner.current.clone(), goal.is_single);
+                                },
                             }
                         });
 

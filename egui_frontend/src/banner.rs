@@ -174,8 +174,50 @@ pub fn default_banners() -> Vec<UiBanner> {
     ]
 }
 
-pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
-    let mut banner_changed = false;
+/// Says what to invalidate based on which controls changed
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InvalidationResult {
+    /// Nothing changed at all
+    NoChange,
+    /// Only textual changes with no effect on the simulation
+    Nothing,
+    /// The current goal is still valid, but the results have changed
+    ResultsOnly,
+    /// The banner changed in a way that could make the existing goal make no sense.
+    Everything,
+}
+
+impl InvalidationResult {
+    pub fn changed(&mut self) {
+        *self = match *self {
+            Self::NoChange => Self::Nothing,
+            _ => *self,
+        }
+    }
+    pub fn invalidate_results(&mut self) {
+        *self = match *self {
+            Self::Everything => Self::Everything,
+            _ => Self::ResultsOnly,
+        };
+    }
+
+    pub fn invalidate_all(&mut self) {
+        *self = Self::Everything;
+    }
+
+    pub fn combine(&mut self, other: Self) {
+        use InvalidationResult::*;
+        *self = match (*self, other) {
+            (Everything, _) | (_, Everything) => Everything,
+            (ResultsOnly, _) | (_, ResultsOnly) => ResultsOnly,
+            (Nothing, _) | (_, Nothing) => Nothing,
+            (NoChange, NoChange) => NoChange,
+        }
+    }
+}
+
+pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> InvalidationResult {
+    let mut invalidation_result = InvalidationResult::NoChange;
 
     let mut custom_banner = state.current.clone();
     custom_banner.name = "Custom".into();
@@ -196,7 +238,7 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
     // Switching to a "custom" banner isn't actually a change, since it starts out equivalent to
     // whatever the currently-selected banner is
     if state.current.name != banner_name_before && state.current.name != "Custom" {
-        banner_changed = true;
+        invalidation_result.invalidate_all();
     }
 
     let details_open = match (
@@ -246,27 +288,25 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
                         }
                     });
                 if state.current.starting_rates != starting_rates_before {
-                    banner_changed = true;
+                    invalidation_result.invalidate_results();
                 }
             });
             if ui
                 .checkbox(&mut state.current.has_focus_charges, "Focus charges?")
                 .changed()
             {
-                banner_changed = true;
+                invalidation_result.invalidate_results();
             }
             if ui
                 .checkbox(&mut state.current.has_spark, "Spark?")
                 .changed()
             {
-                banner_changed = true;
+                invalidation_result.invalidate_results();
             }
             ui.add_enabled_ui(is_custom_banner, |ui| {
-                if display_unit_list(ui, &mut state.current.units) {
-                    banner_changed = true;
-                }
+                invalidation_result.combine(display_unit_list(ui, &mut state.current.units));
                 if ui.button("+ Add another unit").clicked() {
-                    banner_changed = true;
+                    invalidation_result.invalidate_results();
                     state.current.units.push(UiUnit {
                         name: "New Unit".into(),
                         color: Color::Red,
@@ -275,11 +315,11 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
                 }
             });
         });
-    banner_changed
+    invalidation_result
 }
 
-fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
-    let mut units_changed = false;
+fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> InvalidationResult {
+    let mut invalidation_result = InvalidationResult::NoChange;
 
     let mut to_delete = Vec::new();
     for (i, unit) in units.iter_mut().enumerate() {
@@ -287,11 +327,11 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
             ui.horizontal(|ui| {
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
                     if ui.text_edit_singleline(&mut unit.name).changed() {
-                        units_changed = true;
+                        invalidation_result.changed();
                     }
                 });
                 if ui.button("X").clicked() {
-                    units_changed = true;
+                    invalidation_result.invalidate_all();
                     to_delete.push(i);
                 }
             });
@@ -343,10 +383,10 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
                         );
                     });
                 if unit.color != unit_color_before {
-                    units_changed = true;
+                    invalidation_result.invalidate_results();
                 }
                 if ui.checkbox(&mut unit.fourstar_focus, "4* focus?").changed() {
-                    units_changed = true;
+                    invalidation_result.invalidate_results();
                 }
             });
         });
@@ -355,5 +395,5 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
         units.remove(i);
     }
 
-    units_changed
+    invalidation_result
 }

@@ -12,7 +12,7 @@ pub struct SingleGoal {
     pub is_quantity_goal: bool,
     pub unit_count_goal: u32,
     pub orb_limit: u32,
-    pub unit: String,
+    pub unit_idx: usize,
 }
 
 pub struct MultiGoal {
@@ -29,10 +29,6 @@ pub struct GoalState {
 
 impl GoalState {
     pub fn new(banner: UiBanner, is_single: bool) -> Self {
-        let default_unit = banner
-            .units
-            .get(0)
-            .map_or("".to_string(), |unit| unit.name.clone());
         let num_possible_units = banner.units.len();
         GoalState {
             banner,
@@ -41,7 +37,7 @@ impl GoalState {
                 is_quantity_goal: true,
                 unit_count_goal: 1,
                 orb_limit: 5,
-                unit: default_unit,
+                unit_idx: 0,
             },
             multi: MultiGoal {
                 unit_count_goals: vec![0; num_possible_units],
@@ -50,13 +46,17 @@ impl GoalState {
         }
     }
 
+    pub fn set_banner(&mut self, banner: UiBanner) {
+        if banner.units.len() != self.multi.unit_count_goals.len() {
+            *self = Self::new(banner, self.is_single);
+        } else {
+            self.banner = banner;
+        }
+    }
+
     pub fn to_sim_goal(&self) -> Option<Goal> {
         if self.is_single {
-            let unit = self
-                .banner
-                .units
-                .iter()
-                .find(|u| u.name == self.single.unit)?;
+            let unit = &self.banner.units[self.single.unit_idx];
             let pools = if unit.fourstar_focus {
                 EnumSet::from(Pool::Focus) | Pool::FourstarFocus
             } else {
@@ -129,23 +129,18 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
     });
 
     if state.is_single {
-        let selected_unit_before = state.single.unit.clone();
+        let selected_unit_before = state.single.unit_idx;
         egui::ComboBox::from_label("Unit")
             .selected_text(with_colored_dot(
-                &state.single.unit,
-                state
-                    .banner
-                    .units
-                    .iter()
-                    .find_map(|unit| (unit.name == state.single.unit).then(|| unit.color))
-                    .unwrap(),
+                &state.banner.units[state.single.unit_idx].name,
+                state.banner.units[state.single.unit_idx].color,
                 TextStyle::Button.resolve(&ui.ctx().style()),
             ))
             .show_ui(ui, |ui| {
-                for unit in &state.banner.units {
+                for (i, unit) in state.banner.units.iter().enumerate() {
                     ui.selectable_value(
-                        &mut state.single.unit,
-                        unit.name.clone(),
+                        &mut state.single.unit_idx,
+                        i,
                         with_colored_dot(
                             &unit.name,
                             unit.color,
@@ -154,7 +149,7 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
                     );
                 }
             });
-        if selected_unit_before != state.single.unit {
+        if selected_unit_before != state.single.unit_idx {
             goal_changed = true;
         }
         ui.horizontal(|ui| {
