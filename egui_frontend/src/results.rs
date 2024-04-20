@@ -25,6 +25,7 @@ impl Data {
 pub enum DisplayType {
     Text,
     Chart,
+    RawText,
 }
 
 pub struct ResultsState {
@@ -107,10 +108,12 @@ pub fn display_results(
     ui.horizontal(|ui| {
         ui.selectable_value(&mut results.typ, DisplayType::Text, "Text");
         ui.selectable_value(&mut results.typ, DisplayType::Chart, "Chart");
+        ui.selectable_value(&mut results.typ, DisplayType::RawText, "Raw Text");
     });
     match results.typ {
         DisplayType::Text => display_text_results(ui, banner, goal, results),
         DisplayType::Chart => display_chart_results(ui, banner, goal, results),
+        DisplayType::RawText => display_raw_text_results(ui, banner, goal, results),
     }
 }
 
@@ -172,6 +175,27 @@ fn display_chart_results(
     match &results.data {
         Data::Present(_) => {
             ui.label("Pretend that there's one of those \"Under Construction\" animated gifs from the early internet here.");
+        }
+        Data::Waiting => {
+            ui.spinner();
+        }
+        Data::Invalidated => {}
+    }
+}
+
+fn display_raw_text_results(
+    ui: &mut Ui,
+    _banner: &UiBanner,
+    _goal: &GoalState,
+    results: &mut ResultsState,
+) {
+    match &results.data {
+        Data::Present(data) => {
+            let mut result = String::new();
+            for (idx, value) in data.iter().enumerate() {
+                writeln!(result, "{}: {}", idx, value).expect("Building string failed");
+            }
+            ui.small(result);
         }
         Data::Waiting => {
             ui.spinner();
