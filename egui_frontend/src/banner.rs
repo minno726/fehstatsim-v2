@@ -369,6 +369,18 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
                     banner_changed = true;
                 }
             });
+            if ui
+                .checkbox(&mut state.current.has_focus_charges, "Focus charges?")
+                .changed()
+            {
+                banner_changed = true;
+            }
+            if ui
+                .checkbox(&mut state.current.has_spark, "Spark?")
+                .changed()
+            {
+                banner_changed = true;
+            }
             ui.add_enabled_ui(is_custom_banner, |ui| {
                 if display_unit_list(ui, &mut state.current.units) {
                     banner_changed = true;
