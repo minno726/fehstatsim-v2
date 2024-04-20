@@ -105,18 +105,20 @@ impl GoalState {
 pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
     let mut goal_changed = false;
 
-    if ui
-        .radio_value(&mut state.is_single, true, "Single unit")
-        .changed()
-    {
-        goal_changed = true;
-    }
-    if ui
-        .radio_value(&mut state.is_single, false, "Multiple units")
-        .changed()
-    {
-        goal_changed = true;
-    }
+    ui.horizontal(|ui| {
+        if ui
+            .selectable_value(&mut state.is_single, true, "Single unit")
+            .changed()
+        {
+            goal_changed = true;
+        }
+        if ui
+            .selectable_value(&mut state.is_single, false, "Multiple units")
+            .changed()
+        {
+            goal_changed = true;
+        }
+    });
 
     if state.is_single {
         let selected_unit_before = state.single.unit.clone();
