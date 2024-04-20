@@ -62,146 +62,67 @@ impl BannerState {
 pub fn default_banners() -> Vec<UiBanner> {
     vec![
         UiBanner {
-            name: "Focus: Heroes with Long Titles".into(),
-            starting_rates: (4, 2),
-            units: vec![
-                UiUnit {
-                    name: "Black Knight: The Night's Blade".into(),
-                    color: Color::Green,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Black Knight: Sinister General".into(),
-                    color: Color::Red,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Ginnungagap: Ruler of Nihility".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Caineghis: Gallia's Lion King".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-            ],
-            has_focus_charges: true,
-            has_spark: false,
-        },
-        UiBanner {
-            name: "Focus: Weekly Revival 50".into(),
-            starting_rates: (4, 2),
-            units: vec![
-                UiUnit {
-                    name: "Edelgard".into(),
-                    color: Color::Green,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Hubert".into(),
-                    color: Color::Red,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Petra".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-            ],
-            has_focus_charges: true,
-            has_spark: false,
-        },
-        UiBanner {
-            name: "Hero Fest".into(),
-            starting_rates: (5, 3),
-            units: vec![
-                UiUnit {
-                    name: "Eitri".into(),
-                    color: Color::Green,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Ascended Idunn".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Winter Lysithea".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Ascended Mareeta".into(),
-                    color: Color::Red,
-                    fourstar_focus: false,
-                },
-            ],
-            has_focus_charges: false,
-            has_spark: false,
-        },
-        UiBanner {
-            name: "Focus: Double Mythic Heroes".into(),
+            name: "Generic Legendary Banner".into(),
             starting_rates: (8, 0),
             units: vec![
                 UiUnit {
-                    name: "Fomortiis".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Gotoh".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Arval".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Legendary Veronica".into(),
+                    name: "Red 1".into(),
                     color: Color::Red,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Reginn".into(),
+                    name: "Red 2".into(),
                     color: Color::Red,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Rearmed Líf".into(),
+                    name: "Red 3".into(),
                     color: Color::Red,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Ullr".into(),
+                    name: "Blue 1".into(),
                     color: Color::Blue,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Legendary Dimitri".into(),
+                    name: "Blue 2".into(),
                     color: Color::Blue,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Monica".into(),
+                    name: "Blue 3".into(),
                     color: Color::Blue,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Legendary Edelgard".into(),
+                    name: "Green 1".into(),
                     color: Color::Green,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Freyja".into(),
+                    name: "Green 2".into(),
                     color: Color::Green,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Ascended Hilda".into(),
+                    name: "Green 3".into(),
                     color: Color::Green,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Colorless 1".into(),
+                    color: Color::Colorless,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Colorless 2".into(),
+                    color: Color::Colorless,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Colorless 3".into(),
+                    color: Color::Colorless,
                     fourstar_focus: false,
                 },
             ],
@@ -209,123 +130,32 @@ pub fn default_banners() -> Vec<UiBanner> {
             has_spark: false,
         },
         UiBanner {
-            name: "Legendary & Mythic Hero Remix".into(),
-            starting_rates: (6, 0),
+            name: "Generic Hero Fest".into(),
+            starting_rates: (5, 3),
             units: vec![
                 UiUnit {
-                    name: "Legendary Leif".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Altina".into(),
+                    name: "Red".into(),
                     color: Color::Red,
                     fourstar_focus: false,
                 },
                 UiUnit {
-                    name: "Ascended Florina".into(),
+                    name: "Blue".into(),
+                    color: Color::Blue,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Green".into(),
+                    color: Color::Green,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Colorless".into(),
                     color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Fjorm".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Legendary Tiki".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Legendary Lyn".into(),
-                    color: Color::Green,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Gunnthrá".into(),
-                    color: Color::Green,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Legendary Marth".into(),
-                    color: Color::Red,
                     fourstar_focus: false,
                 },
             ],
             has_focus_charges: false,
             has_spark: false,
-        },
-        UiBanner {
-            name: "Focus: Double Special Heroes".into(),
-            starting_rates: (6, 0),
-            units: vec![
-                UiUnit {
-                    name: "Flame Lyn".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Flame Tana".into(),
-                    color: Color::Green,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Bridal Cecilia".into(),
-                    color: Color::Red,
-                    fourstar_focus: true,
-                },
-                UiUnit {
-                    name: "Summer Lyon".into(),
-                    color: Color::Red,
-                    fourstar_focus: true,
-                },
-                UiUnit {
-                    name: "Thief Nina".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Thief Cath".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Summer Dimitri".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Summer Nifl".into(),
-                    color: Color::Colorless,
-                    fourstar_focus: false,
-                },
-            ],
-            has_focus_charges: true,
-            has_spark: true,
-        },
-        UiBanner {
-            name: "An Unusually Long Name For A Banner So I Can Check That It Fits".into(),
-            starting_rates: (3, 3),
-            has_focus_charges: false,
-            has_spark: true,
-            units: vec![
-                UiUnit {
-                    name: "A Unit With An Unusually Long Name".into(),
-                    color: Color::Red,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Another Unit With An Unusually Long Name".into(),
-                    color: Color::Blue,
-                    fourstar_focus: false,
-                },
-                UiUnit {
-                    name: "Short".into(),
-                    color: Color::Green,
-                    fourstar_focus: false,
-                },
-            ],
         },
     ]
 }
