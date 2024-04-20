@@ -185,18 +185,20 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
             }
         }
     } else {
-        if ui
-            .radio_value(&mut state.multi.require_all, true, "All of these")
-            .changed()
-        {
-            goal_changed = true;
-        }
-        if ui
-            .radio_value(&mut state.multi.require_all, false, "Any of these")
-            .changed()
-        {
-            goal_changed = true;
-        }
+        ui.horizontal(|ui| {
+            if ui
+                .selectable_value(&mut state.multi.require_all, true, "All of these")
+                .changed()
+            {
+                goal_changed = true;
+            }
+            if ui
+                .selectable_value(&mut state.multi.require_all, false, "Any of these")
+                .changed()
+            {
+                goal_changed = true;
+            }
+        });
         TableBuilder::new(ui)
             .column(Column::exact(200.0))
             .column(Column::remainder())
