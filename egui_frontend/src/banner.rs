@@ -341,6 +341,13 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
     egui::CollapsingHeader::new("Details")
         .open(details_open)
         .show(ui, |ui| {
+            if state.current.name != "Custom" {
+                if ui.button("Edit").clicked() {
+                    state.current = state.current.clone();
+                    state.current.name = "Custom".into();
+                }
+            }
+
             fn rates_to_text(rates: (u8, u8)) -> &'static str {
                 match rates {
                     (3, 3) => "3%/3% (Standard)",
