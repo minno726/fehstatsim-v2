@@ -141,7 +141,7 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
                         with_colored_dot(
                             &unit.name,
                             unit.color,
-                            TextStyle::Small.resolve(&ui.ctx().style()),
+                            TextStyle::Button.resolve(&ui.ctx().style()),
                         ),
                     );
                 }
@@ -204,7 +204,7 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
             }
         });
         TableBuilder::new(ui)
-            .column(Column::exact(200.0))
+            .column(Column::exact(270.0))
             .column(Column::remainder())
             .body(|body| {
                 body.rows(24.0, state.banner.units.len(), |mut row| {
@@ -216,7 +216,7 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
                             state.banner.units[i].color,
                             TextStyle::Body.resolve(&ui.ctx().style()),
                         );
-                        cb_text.wrap = TextWrapping::truncate_at_width(200.0);
+                        cb_text.wrap = TextWrapping::truncate_at_width(270.0);
                         if ui
                             .checkbox(
                                 &mut enabled,

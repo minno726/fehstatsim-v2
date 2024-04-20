@@ -62,6 +62,34 @@ impl BannerState {
 pub fn default_banners() -> Vec<UiBanner> {
     vec![
         UiBanner {
+            name: "Focus: Heroes with Long Titles".into(),
+            starting_rates: (4, 2),
+            units: vec![
+                UiUnit {
+                    name: "Black Knight: The Night's Blade".into(),
+                    color: Color::Green,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Black Knight: Sinister General".into(),
+                    color: Color::Red,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Ginnungagap: Ruler of Nihility".into(),
+                    color: Color::Colorless,
+                    fourstar_focus: false,
+                },
+                UiUnit {
+                    name: "Caineghis: Gallia's Lion King".into(),
+                    color: Color::Colorless,
+                    fourstar_focus: false,
+                },
+            ],
+            has_focus_charges: true,
+            has_spark: false,
+        },
+        UiBanner {
             name: "Focus: Weekly Revival 50".into(),
             starting_rates: (4, 2),
             units: vec![
@@ -439,7 +467,7 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
                             with_colored_dot(
                                 "Red",
                                 Color::Red,
-                                TextStyle::Small.resolve(&ui.ctx().style()),
+                                TextStyle::Button.resolve(&ui.ctx().style()),
                             ),
                         );
                         ui.selectable_value(
@@ -448,7 +476,7 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
                             with_colored_dot(
                                 "Blue",
                                 Color::Blue,
-                                TextStyle::Small.resolve(&ui.ctx().style()),
+                                TextStyle::Button.resolve(&ui.ctx().style()),
                             ),
                         );
                         ui.selectable_value(
@@ -457,7 +485,7 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
                             with_colored_dot(
                                 "Green",
                                 Color::Green,
-                                TextStyle::Small.resolve(&ui.ctx().style()),
+                                TextStyle::Button.resolve(&ui.ctx().style()),
                             ),
                         );
                         ui.selectable_value(
@@ -466,7 +494,7 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
                             with_colored_dot(
                                 "Colorless",
                                 Color::Colorless,
-                                TextStyle::Small.resolve(&ui.ctx().style()),
+                                TextStyle::Button.resolve(&ui.ctx().style()),
                             ),
                         );
                     });
