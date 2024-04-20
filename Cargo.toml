@@ -1,12 +1,5 @@
 [workspace]
-members = [
-    "summon_simulator",
-    "egui_frontend",
-    "dioxus_frontend",
-    "sycamore_frontend",
-    "yew_frontend",
-]
+members = ["summon_simulator", "egui_frontend"]
 
 [profile.bench]
 debug = true
-
