@@ -114,16 +114,19 @@ fn display_text_results(
         Data::Present(data) => {
             ui.label(data_percentiles_to_string(data, label, is_orb_goal));
             ui.horizontal(|ui| {
-                ui.label("Custom");
                 if ui.button("-0.1%").clicked() {
                     results.percentile_slider -= 1;
                 }
-                egui::Slider::new(&mut results.percentile_slider, 1..=999)
+                egui::Slider::new(&mut results.percentile_slider, 0..=1000)
+                    .clamp_to_range(true)
+                    .step_by(10.0)
+                    .smart_aim(false)
                     .show_value(false)
                     .ui(ui);
                 if ui.button("+0.1%").clicked() {
                     results.percentile_slider += 1;
                 }
+                results.percentile_slider = results.percentile_slider.clamp(1, 999);
             });
             let custom_percentile = percentiles(
                 data,
