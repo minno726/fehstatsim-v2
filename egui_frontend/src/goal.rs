@@ -149,18 +149,20 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
         if selected_unit_before != state.single.unit {
             goal_changed = true;
         }
-        if ui
-            .radio_value(&mut state.single.is_quantity_goal, true, "# of copies")
-            .changed()
-        {
-            goal_changed = true;
-        }
-        if ui
-            .radio_value(&mut state.single.is_quantity_goal, false, "# of orbs")
-            .changed()
-        {
-            goal_changed = true;
-        }
+        ui.horizontal(|ui| {
+            if ui
+                .selectable_value(&mut state.single.is_quantity_goal, true, "# of copies")
+                .changed()
+            {
+                goal_changed = true;
+            }
+            if ui
+                .selectable_value(&mut state.single.is_quantity_goal, false, "# of orbs")
+                .changed()
+            {
+                goal_changed = true;
+            }
+        });
 
         if state.single.is_quantity_goal {
             let suffix = if state.single.unit_count_goal == 1 {
