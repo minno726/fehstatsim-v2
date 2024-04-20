@@ -29,7 +29,10 @@ pub struct GoalState {
 
 impl GoalState {
     pub fn new(banner: UiBanner, is_single: bool) -> Self {
-        let default_unit = banner.units[0].name.clone();
+        let default_unit = banner
+            .units
+            .get(0)
+            .map_or("".to_string(), |unit| unit.name.clone());
         let num_possible_units = banner.units.len();
         GoalState {
             banner,
@@ -104,6 +107,11 @@ impl GoalState {
 
 pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
     let mut goal_changed = false;
+
+    if state.banner.to_sim_banner().is_none() {
+        ui.label("Invalid banner");
+        return false;
+    }
 
     ui.horizontal(|ui| {
         if ui
