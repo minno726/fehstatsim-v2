@@ -58,7 +58,7 @@ fn percentiles(data: &FrequencyCounter, values: &[f32], invert: bool) -> Vec<u32
     }
     for (i, &data_point) in iter {
         cum_total += data_point;
-        if cum_total as f32 > total as f32 * values[cur_value_idx] {
+        while cum_total as f32 > total as f32 * values[cur_value_idx] {
             result.push(i as u32);
             cur_value_idx += 1;
             if cur_value_idx >= values.len() {
@@ -66,7 +66,14 @@ fn percentiles(data: &FrequencyCounter, values: &[f32], invert: bool) -> Vec<u32
             }
         }
     }
-    let filler = if invert { 0 } else { (data.len() - 1) as u32 };
+    let filler = if invert {
+        data.iter()
+            .enumerate()
+            .find_map(|(idx, &value)| if value > 0 { Some(idx as u32) } else { None })
+            .unwrap_or(0)
+    } else {
+        (data.len() - 1) as u32
+    };
     while result.len() < values.len() {
         result.push(filler);
     }
