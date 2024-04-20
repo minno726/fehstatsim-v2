@@ -3,16 +3,30 @@ use summon_simulator::{banner::GenericBanner, types::Color};
 
 use crate::app::with_colored_dot;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct UiUnit {
     pub name: String,
     pub color: Color,
     pub fourstar_focus: bool,
 }
-#[derive(Clone, PartialEq, Eq)]
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Deserialize)]
+
+pub struct FivestarRates {
+    focus: u8,
+    fivestar: u8,
+}
+
+impl From<(u8, u8)> for FivestarRates {
+    fn from((focus, fivestar): (u8, u8)) -> Self {
+        FivestarRates { focus, fivestar }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct UiBanner {
     pub name: String,
-    pub starting_rates: (u8, u8),
+    pub starting_rates: FivestarRates,
     pub has_focus_charges: bool,
     pub has_spark: bool,
     pub units: Vec<UiUnit>,
@@ -29,7 +43,7 @@ impl UiBanner {
             }
         }
         let banner = GenericBanner {
-            starting_rates: self.starting_rates,
+            starting_rates: (self.starting_rates.focus, self.starting_rates.fivestar),
             focus_sizes,
             fourstar_focus_sizes,
             has_spark: self.has_spark,
@@ -46,7 +60,7 @@ impl UiBanner {
 #[derive(Clone)]
 pub struct BannerState {
     pub current: UiBanner,
-    available: Vec<UiBanner>,
+    pub available: Vec<UiBanner>,
 }
 
 impl BannerState {
@@ -63,7 +77,7 @@ pub fn default_banners() -> Vec<UiBanner> {
     vec![
         UiBanner {
             name: "Generic Legendary Banner".into(),
-            starting_rates: (8, 0),
+            starting_rates: (8, 0).into(),
             units: vec![
                 UiUnit {
                     name: "Red 1".into(),
@@ -131,7 +145,7 @@ pub fn default_banners() -> Vec<UiBanner> {
         },
         UiBanner {
             name: "Generic Hero Fest".into(),
-            starting_rates: (5, 3),
+            starting_rates: (5, 3).into(),
             units: vec![
                 UiUnit {
                     name: "Red".into(),
@@ -206,8 +220,8 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
                 }
             }
 
-            fn rates_to_text(rates: (u8, u8)) -> &'static str {
-                match rates {
+            fn rates_to_text(rates: FivestarRates) -> &'static str {
+                match (rates.focus, rates.fivestar) {
                     (3, 3) => "3%/3% (Standard)",
                     (4, 2) => "4%/2% (Weekly Revival)",
                     (8, 0) => "8%/0% (Legendary/Mythic)",
@@ -226,8 +240,8 @@ pub(crate) fn display_banner(ui: &mut Ui, state: &mut BannerState) -> bool {
                         for rate in [(3, 3), (4, 2), (8, 0), (5, 3), (6, 0)] {
                             ui.selectable_value(
                                 &mut state.current.starting_rates,
-                                rate,
-                                rates_to_text(rate),
+                                rate.into(),
+                                rates_to_text(rate.into()),
                             );
                         }
                     });

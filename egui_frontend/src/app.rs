@@ -1,12 +1,15 @@
+use eframe::web_sys;
 use egui::{text::LayoutJob, Color32, FontId, RichText, TextFormat};
 use gloo_console::log;
+use gloo_net::http::Request;
 use gloo_worker::{Worker, WorkerBridge};
 use instant::Instant;
 use std::{cell::Cell, rc::Rc, time::Duration};
 use summon_simulator::types::Color;
+use wasm_bindgen_futures::spawn_local;
 
 use crate::{
-    banner::{display_banner, BannerState},
+    banner::{display_banner, BannerState, UiBanner},
     goal::{display_goal, GoalState},
     results::{display_results, Data, ResultsState},
     SimWorker, SimWorkerInput,
@@ -63,6 +66,7 @@ pub struct App {
     banner: BannerState,
     goal: GoalState,
     results: ResultsState,
+    current_banner_list: Rc<Cell<Option<Vec<UiBanner>>>>,
 
     // status
     status: Status,
@@ -82,6 +86,34 @@ impl App {
         let banner = BannerState::new();
         let goal = GoalState::new(banner.current.clone(), true);
         let results = ResultsState::new();
+        let current_banner_list = Rc::new(Cell::new(None));
+
+        // Fetch the current list from what could generously be referred to as an "API"
+        {
+            let ctx = cc.egui_ctx.clone();
+            let current_banner_list = current_banner_list.clone();
+            spawn_local(async move {
+                let response = Request::get("https://s3.us-east-1.amazonaws.com/public-files.fullyconcentrated.net/current_banners.json").cache(web_sys::RequestCache::NoCache).send().await;
+                if let Ok(response) = response {
+                    let contents = response.json::<Vec<UiBanner>>().await;
+                    if let Ok(contents) = contents {
+                        current_banner_list.set(Some(contents));
+                        ctx.request_repaint();
+                    } else {
+                        log!(
+                            "Error parsing current banner list: {}",
+                            contents.unwrap_err().to_string()
+                        );
+                    }
+                } else {
+                    log!(
+                        "Error fetching current banner list: {}",
+                        response.unwrap_err().to_string()
+                    );
+                }
+            });
+        }
+
         App {
             data_update,
             bridge,
@@ -93,6 +125,7 @@ impl App {
             banner,
             goal,
             results,
+            current_banner_list,
         }
     }
 
@@ -123,6 +156,8 @@ impl eframe::App for App {
             banner,
             goal,
             results,
+            current_banner_list,
+            ..
         } = self;
 
         if let Some(worker_response) = data_update.replace(None) {
@@ -130,6 +165,10 @@ impl eframe::App for App {
                 results.data = Data::Present(worker_response);
                 status.last_data_received = Some(Instant::now());
             }
+        }
+
+        if let Some(current_banner_list) = current_banner_list.replace(None) {
+            banner.available.extend(current_banner_list);
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
