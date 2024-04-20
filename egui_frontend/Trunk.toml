@@ -1,2 +1,3 @@
 [build]
-#filehash = false
+filehash = false
+minify = "on_release"
