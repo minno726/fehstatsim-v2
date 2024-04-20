@@ -75,9 +75,16 @@ pub(crate) fn with_colored_dot(text: &str, color: Color, font: FontId) -> Layout
     job
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Data {
+    Present(FrequencyCounter),
+    Waiting,
+    Invalidated,
+}
+
 pub struct App {
     // data
-    data: Option<FrequencyCounter>,
+    data: Data,
     banner: BannerState,
     goal: GoalState,
 
@@ -99,7 +106,7 @@ impl App {
         let banner = BannerState::new();
         let goal = GoalState::new(banner.current.clone(), true);
         App {
-            data: None,
+            data: Data::Waiting,
             data_update,
             bridge,
             is_running: false,
@@ -138,8 +145,8 @@ impl eframe::App for App {
         } = self;
 
         if let Some(worker_response) = data_update.replace(None) {
-            if *is_running {
-                *data = Some(worker_response);
+            if *is_running && *data != Data::Invalidated {
+                *data = Data::Present(worker_response);
             }
         }
 
@@ -151,7 +158,8 @@ impl eframe::App for App {
                         .default_open(true)
                         .show(ui, |ui| {
                             if display_banner(ui, banner) {
-                                *data = None;
+                                bridge.send(SimWorkerInput::Stop);
+                                *data = Data::Invalidated;
                                 *goal = GoalState::new(banner.current.clone(), goal.is_single);
                             }
                         });
@@ -160,7 +168,9 @@ impl eframe::App for App {
                         .default_open(true)
                         .show(ui, |ui| {
                             if display_goal(ui, goal) {
-                                *data = None;
+                                bridge.send(SimWorkerInput::Stop);
+                                *data = Data::Invalidated;
+                                *is_running = false;
                             }
                         });
 
@@ -182,6 +192,9 @@ impl eframe::App for App {
                                         target_interval: Duration::from_millis(500),
                                     });
                                     *is_running = true;
+                                    if *data == Data::Invalidated {
+                                        *data = Data::Waiting;
+                                    }
                                 }
                             } else {
                                 ui.add_enabled(false, button)
@@ -192,11 +205,11 @@ impl eframe::App for App {
                                 .on_disabled_hover_text("Invalid banner.");
                         }
                     }
-                    ui.label(
-                        data.as_ref()
-                            .map(data_percentiles_to_string)
-                            .unwrap_or("Not run yet".into()),
-                    );
+                    ui.label(match data {
+                        Data::Present(data) => data_percentiles_to_string(&data),
+                        Data::Waiting => "Not run yet".to_string(),
+                        Data::Invalidated => "Canceled".to_string(),
+                    });
                 })
         });
     }
