@@ -1,8 +1,8 @@
-use egui::RichText;
+use egui::{text::LayoutJob, Color32, FontId, RichText, TextFormat};
 use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
 use std::{cell::Cell, fmt::Write, rc::Rc, time::Duration};
-use summon_simulator::frequency_counter::FrequencyCounter;
+use summon_simulator::{frequency_counter::FrequencyCounter, types::Color};
 
 use crate::{
     banner::{display_banner, BannerState},
@@ -47,6 +47,34 @@ fn data_percentiles_to_string(data: &FrequencyCounter) -> String {
     output
 }
 
+pub(crate) fn with_colored_dot(text: &str, color: Color, font: FontId) -> LayoutJob {
+    let mut job = LayoutJob::default();
+    job.append(
+        "⏺",
+        0.0,
+        TextFormat {
+            color: match color {
+                Color::Red => Color32::from_rgb(180, 58, 75),
+                Color::Blue => Color32::from_rgb(54, 96, 198),
+                Color::Green => Color32::from_rgb(79, 171, 62),
+                Color::Colorless => Color32::from_rgb(87, 102, 109),
+            },
+            font_id: font.clone(),
+            ..Default::default()
+        },
+    );
+    job.append(
+        text,
+        4.0,
+        TextFormat {
+            font_id: font,
+            color: Color32::PLACEHOLDER,
+            ..Default::default()
+        },
+    );
+    job
+}
+
 pub struct App {
     // data
     data: Option<FrequencyCounter>,
@@ -82,7 +110,6 @@ impl App {
 
     fn set_text_styles(ctx: &eframe::CreationContext<'_>) {
         use egui::FontFamily::Proportional;
-        use egui::FontId;
         use egui::TextStyle::*;
         ctx.egui_ctx.style_mut(|style| {
             style.text_styles = [

@@ -1,4 +1,4 @@
-use egui::{Ui, Widget};
+use egui::{TextStyle, Ui, Widget};
 use egui_extras::{Column, TableBuilder};
 use enumset::EnumSet;
 use summon_simulator::{
@@ -6,7 +6,7 @@ use summon_simulator::{
     types::Pool,
 };
 
-use crate::banner::UiBanner;
+use crate::{app::with_colored_dot, banner::UiBanner};
 
 struct SingleGoal {
     is_quantity_goal: bool,
@@ -121,10 +121,27 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
     if state.is_single {
         let selected_unit_before = state.single.unit.clone();
         egui::ComboBox::from_label("Unit")
-            .selected_text(&state.single.unit)
+            .selected_text(with_colored_dot(
+                &state.single.unit,
+                state
+                    .banner
+                    .units
+                    .iter()
+                    .find_map(|unit| (unit.name == state.single.unit).then(|| unit.color))
+                    .unwrap(),
+                TextStyle::Button.resolve(&ui.ctx().style()),
+            ))
             .show_ui(ui, |ui| {
                 for unit in &state.banner.units {
-                    ui.selectable_value(&mut state.single.unit, unit.name.clone(), &unit.name);
+                    ui.selectable_value(
+                        &mut state.single.unit,
+                        unit.name.clone(),
+                        with_colored_dot(
+                            &unit.name,
+                            unit.color,
+                            TextStyle::Small.resolve(&ui.ctx().style()),
+                        ),
+                    );
                 }
             });
         if selected_unit_before != state.single.unit {
@@ -189,7 +206,15 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
                     row.col(|ui| {
                         let mut enabled = state.multi.unit_count_goals[i] > 0;
                         if ui
-                            .checkbox(&mut enabled, &state.banner.units[i].name)
+                            .checkbox(
+                                &mut enabled,
+                                //&state.banner.units[i].name,
+                                with_colored_dot(
+                                    &state.banner.units[i].name,
+                                    state.banner.units[i].color,
+                                    TextStyle::Body.resolve(&ui.ctx().style()),
+                                ),
+                            )
                             .changed()
                         {
                             if !enabled {

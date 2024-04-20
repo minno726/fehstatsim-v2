@@ -1,5 +1,7 @@
-use egui::Ui;
+use egui::{TextStyle, Ui};
 use summon_simulator::{banner::GenericBanner, types::Color};
+
+use crate::app::with_colored_dot;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct UiUnit {
@@ -404,12 +406,49 @@ fn display_unit_list(ui: &mut Ui, units: &mut Vec<UiUnit>) -> bool {
             ui.horizontal(|ui| {
                 let unit_color_before = unit.color;
                 egui::ComboBox::from_id_source((i, "display_unit_list"))
-                    .selected_text(format!("{:?}", unit.color))
+                    .selected_text(with_colored_dot(
+                        &format!("{:?}", unit.color),
+                        unit.color,
+                        TextStyle::Button.resolve(&ui.ctx().style()),
+                    ))
+                    .width(120.0)
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut unit.color, Color::Red, "Red");
-                        ui.selectable_value(&mut unit.color, Color::Blue, "Blue");
-                        ui.selectable_value(&mut unit.color, Color::Green, "Green");
-                        ui.selectable_value(&mut unit.color, Color::Colorless, "Colorless");
+                        ui.selectable_value(
+                            &mut unit.color,
+                            Color::Red,
+                            with_colored_dot(
+                                "Red",
+                                Color::Red,
+                                TextStyle::Small.resolve(&ui.ctx().style()),
+                            ),
+                        );
+                        ui.selectable_value(
+                            &mut unit.color,
+                            Color::Blue,
+                            with_colored_dot(
+                                "Blue",
+                                Color::Blue,
+                                TextStyle::Small.resolve(&ui.ctx().style()),
+                            ),
+                        );
+                        ui.selectable_value(
+                            &mut unit.color,
+                            Color::Green,
+                            with_colored_dot(
+                                "Green",
+                                Color::Green,
+                                TextStyle::Small.resolve(&ui.ctx().style()),
+                            ),
+                        );
+                        ui.selectable_value(
+                            &mut unit.color,
+                            Color::Colorless,
+                            with_colored_dot(
+                                "Colorless",
+                                Color::Colorless,
+                                TextStyle::Small.resolve(&ui.ctx().style()),
+                            ),
+                        );
                     });
                 if unit.color != unit_color_before {
                     units_changed = true;
