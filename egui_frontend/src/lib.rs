@@ -72,9 +72,12 @@ impl gloo_worker::Worker for SimWorker {
                             scope.respond(id, sim.data().clone());
                         }
                         // Update number of iterations to aim for the requested result interval
-                        self.num_iters = (self.num_iters as f64 * interval.as_secs_f64()
+                        let new_iters = (self.num_iters as f64 * interval.as_secs_f64()
                             / duration.as_secs_f64())
                         .round() as u32;
+                        // ...but don't ramp up more than 10x each time, to avoid a very fast
+                        // first iteration resulting in a very imprecise second
+                        self.num_iters = new_iters.min(self.num_iters.saturating_mul(10));
                     }
                     _ => panic!("Received Continue message without parameters"),
                 }
