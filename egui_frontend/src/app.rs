@@ -1,6 +1,7 @@
 use egui::{text::LayoutJob, Color32, FontId, RichText, TextFormat};
 use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
+use instant::Instant;
 use std::{cell::Cell, rc::Rc, time::Duration};
 use summon_simulator::types::Color;
 
@@ -47,6 +48,8 @@ pub struct App {
 
     // status
     is_running: bool,
+    time_started: Option<Instant>,
+    last_data_received: Option<Instant>,
 
     // communication
     data_update: Rc<Cell<Option<<SimWorker as Worker>::Output>>>,
@@ -67,6 +70,8 @@ impl App {
             data_update,
             bridge,
             is_running: false,
+            time_started: None,
+            last_data_received: None,
             banner,
             goal,
             results,
@@ -97,6 +102,8 @@ impl eframe::App for App {
             data_update,
             bridge,
             is_running,
+            time_started,
+            last_data_received,
             banner,
             goal,
             results,
@@ -105,6 +112,7 @@ impl eframe::App for App {
         if let Some(worker_response) = data_update.replace(None) {
             if *is_running && results.data != Data::Invalidated {
                 results.data = Data::Present(worker_response);
+                *last_data_received = Some(Instant::now());
             }
         }
 
@@ -132,37 +140,58 @@ impl eframe::App for App {
                             }
                         });
 
-                    if *is_running {
-                        if ui.button("Stop").clicked() {
-                            log!("Stop clicked");
-                            bridge.send(SimWorkerInput::Stop);
-                            *is_running = false;
-                        }
-                    } else {
-                        let button = egui::Button::new("Run");
-                        if let Some(sim_banner) = banner.current.to_sim_banner() {
-                            if let Some(sim_goal) = goal.to_sim_goal() {
-                                if ui.add(button).clicked() {
-                                    log!("Run clicked");
-                                    bridge.send(SimWorkerInput::Run {
-                                        banner: sim_banner,
-                                        goal: sim_goal,
-                                        target_interval: Duration::from_millis(500),
-                                    });
-                                    *is_running = true;
-                                    if results.data == Data::Invalidated {
-                                        results.data = Data::Waiting;
+                    ui.horizontal(|ui| {
+                        if *is_running {
+                            ui.horizontal(|ui| {
+                                if ui.button("Stop").clicked() {
+                                    log!("Stop clicked");
+                                    bridge.send(SimWorkerInput::Stop);
+                                    *is_running = false;
+                                }
+                            });
+                        } else {
+                            let button = egui::Button::new("Run");
+                            if let Some(sim_banner) = banner.current.to_sim_banner() {
+                                if let Some(sim_goal) = goal.to_sim_goal() {
+                                    if ui.add(button).clicked() {
+                                        log!("Run clicked");
+                                        bridge.send(SimWorkerInput::Run {
+                                            banner: sim_banner,
+                                            goal: sim_goal,
+                                            target_interval: Duration::from_millis(500),
+                                        });
+                                        *is_running = true;
+                                        *time_started = Some(Instant::now());
+                                        *last_data_received = None;
+                                        if results.data == Data::Invalidated {
+                                            results.data = Data::Waiting;
+                                        }
                                     }
+                                } else {
+                                    ui.add_enabled(false, button)
+                                        .on_disabled_hover_text("Invalid goal.");
                                 }
                             } else {
                                 ui.add_enabled(false, button)
-                                    .on_disabled_hover_text("Invalid goal.");
+                                    .on_disabled_hover_text("Invalid banner.");
                             }
-                        } else {
-                            ui.add_enabled(false, button)
-                                .on_disabled_hover_text("Invalid banner.");
                         }
-                    }
+                        if let Some((elapsed, num_samples)) = (|| {
+                            let elapsed = last_data_received
+                                .unwrap_or_else(|| Instant::now())
+                                .checked_duration_since((*time_started)?)?;
+                            let num_samples = results.data.data()?.iter().sum::<u32>();
+                            Some((elapsed, num_samples))
+                        })() {
+                            let mut rate = num_samples as f32 / elapsed.as_secs_f32();
+                            if rate > 10000.0 {
+                                rate /= 1000.0;
+                                ui.small(format!("{num_samples} samples ({rate:.0}K/s)"));
+                            } else {
+                                ui.small(format!("{num_samples} samples ({rate:.0}/s)"));
+                            }
+                        }
+                    });
                     display_results(ui, &banner.current, goal, results);
                 })
         });

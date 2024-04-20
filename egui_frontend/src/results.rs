@@ -12,6 +12,15 @@ pub enum Data {
     Invalidated,
 }
 
+impl Data {
+    pub fn data(&self) -> Option<&FrequencyCounter> {
+        match self {
+            Data::Present(data) => Some(data),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum DisplayType {
     Text,
