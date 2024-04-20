@@ -1,6 +1,7 @@
 mod app;
 mod banner;
 mod goal;
+mod results;
 pub use app::App;
 
 use gloo_console::log;

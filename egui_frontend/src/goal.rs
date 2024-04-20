@@ -8,23 +8,23 @@ use summon_simulator::{
 
 use crate::{app::with_colored_dot, banner::UiBanner};
 
-struct SingleGoal {
-    is_quantity_goal: bool,
-    unit_count_goal: u32,
-    orb_limit: u32,
-    unit: String,
+pub struct SingleGoal {
+    pub is_quantity_goal: bool,
+    pub unit_count_goal: u32,
+    pub orb_limit: u32,
+    pub unit: String,
 }
 
-struct MultiGoal {
-    unit_count_goals: Vec<u32>,
-    require_all: bool,
+pub struct MultiGoal {
+    pub unit_count_goals: Vec<u32>,
+    pub require_all: bool,
 }
 
 pub struct GoalState {
     pub banner: UiBanner,
     pub is_single: bool,
-    single: SingleGoal,
-    multi: MultiGoal,
+    pub single: SingleGoal,
+    pub multi: MultiGoal,
 }
 
 impl GoalState {

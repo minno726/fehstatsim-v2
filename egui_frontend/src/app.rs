@@ -1,51 +1,15 @@
 use egui::{text::LayoutJob, Color32, FontId, RichText, TextFormat};
 use gloo_console::log;
 use gloo_worker::{Worker, WorkerBridge};
-use std::{cell::Cell, fmt::Write, rc::Rc, time::Duration};
-use summon_simulator::{frequency_counter::FrequencyCounter, types::Color};
+use std::{cell::Cell, rc::Rc, time::Duration};
+use summon_simulator::types::Color;
 
 use crate::{
     banner::{display_banner, BannerState},
     goal::{display_goal, GoalState},
+    results::{display_results, Data, ResultsState},
     SimWorker, SimWorkerInput,
 };
-
-fn percentiles(data: &FrequencyCounter, values: &[f32]) -> Vec<u32> {
-    let total = data.iter().sum::<u32>();
-    let mut cum_total = 0;
-    let mut cur_value_idx = 0;
-    let mut result = Vec::new();
-    for (i, &data_point) in data.iter().enumerate() {
-        cum_total += data_point;
-        if cum_total as f32 > total as f32 * values[cur_value_idx] {
-            result.push(i as u32);
-            cur_value_idx += 1;
-            if cur_value_idx >= values.len() {
-                return result;
-            }
-        }
-    }
-    while result.len() < values.len() {
-        result.push((data.len() - 1) as u32);
-    }
-    result
-}
-
-fn data_percentiles_to_string(data: &FrequencyCounter) -> String {
-    let sample_percentiles = [0.25f32, 0.5, 0.75, 0.9, 0.99];
-    let data = percentiles(data, &sample_percentiles);
-    let mut output = String::new();
-    for i in 0..sample_percentiles.len() {
-        writeln!(
-            &mut output,
-            "{}%: {}",
-            (sample_percentiles[i] * 100.0).round() as u32,
-            data[i]
-        )
-        .unwrap();
-    }
-    output
-}
 
 pub(crate) fn with_colored_dot(text: &str, color: Color, font: FontId) -> LayoutJob {
     let mut job = LayoutJob::default();
@@ -75,18 +39,11 @@ pub(crate) fn with_colored_dot(text: &str, color: Color, font: FontId) -> Layout
     job
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Data {
-    Present(FrequencyCounter),
-    Waiting,
-    Invalidated,
-}
-
 pub struct App {
     // data
-    data: Data,
     banner: BannerState,
     goal: GoalState,
+    results: ResultsState,
 
     // status
     is_running: bool,
@@ -105,13 +62,14 @@ impl App {
         App::set_text_styles(cc);
         let banner = BannerState::new();
         let goal = GoalState::new(banner.current.clone(), true);
+        let results = ResultsState::new();
         App {
-            data: Data::Waiting,
             data_update,
             bridge,
             is_running: false,
             banner,
             goal,
+            results,
         }
     }
 
@@ -136,17 +94,17 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let Self {
-            data,
             data_update,
             bridge,
             is_running,
             banner,
             goal,
+            results,
         } = self;
 
         if let Some(worker_response) = data_update.replace(None) {
-            if *is_running && *data != Data::Invalidated {
-                *data = Data::Present(worker_response);
+            if *is_running && results.data != Data::Invalidated {
+                results.data = Data::Present(worker_response);
             }
         }
 
@@ -159,7 +117,7 @@ impl eframe::App for App {
                         .show(ui, |ui| {
                             if display_banner(ui, banner) {
                                 bridge.send(SimWorkerInput::Stop);
-                                *data = Data::Invalidated;
+                                results.data = Data::Invalidated;
                                 *goal = GoalState::new(banner.current.clone(), goal.is_single);
                             }
                         });
@@ -169,7 +127,7 @@ impl eframe::App for App {
                         .show(ui, |ui| {
                             if display_goal(ui, goal) {
                                 bridge.send(SimWorkerInput::Stop);
-                                *data = Data::Invalidated;
+                                results.data = Data::Invalidated;
                                 *is_running = false;
                             }
                         });
@@ -192,8 +150,8 @@ impl eframe::App for App {
                                         target_interval: Duration::from_millis(500),
                                     });
                                     *is_running = true;
-                                    if *data == Data::Invalidated {
-                                        *data = Data::Waiting;
+                                    if results.data == Data::Invalidated {
+                                        results.data = Data::Waiting;
                                     }
                                 }
                             } else {
@@ -205,11 +163,7 @@ impl eframe::App for App {
                                 .on_disabled_hover_text("Invalid banner.");
                         }
                     }
-                    ui.label(match data {
-                        Data::Present(data) => data_percentiles_to_string(&data),
-                        Data::Waiting => "Not run yet".to_string(),
-                        Data::Invalidated => "Canceled".to_string(),
-                    });
+                    display_results(ui, &banner.current, goal, results);
                 })
         });
     }
