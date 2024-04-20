@@ -107,7 +107,7 @@ impl gloo_worker::Worker for SimWorker {
                 target_interval: interval,
             } => {
                 self.sim = Some(sim::Sim::new(banner, goal));
-                self.num_iters = 1000;
+                self.num_iters = 100;
                 self.target_interval = Some(interval);
                 self.id = Some(id);
                 self.running = true;
