@@ -32,7 +32,7 @@ fn percentiles(data: &FrequencyCounter, values: &[f32]) -> Vec<u32> {
 }
 
 fn data_percentiles_to_string(data: &FrequencyCounter) -> String {
-    let sample_percentiles = [0.25f32, 0.5, 0.75, 0.9, 0.99, 1.0];
+    let sample_percentiles = [0.25f32, 0.5, 0.75, 0.9, 0.99];
     let data = percentiles(data, &sample_percentiles);
     let mut output = String::new();
     for i in 0..sample_percentiles.len() {
