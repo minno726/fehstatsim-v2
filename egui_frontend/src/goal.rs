@@ -233,6 +233,7 @@ pub(crate) fn display_goal(ui: &mut Ui, state: &mut GoalState) -> bool {
                             } else {
                                 state.multi.unit_count_goals[i] = 1;
                             }
+                            goal_changed = true;
                         }
                     });
                     row.col(|ui| {
