@@ -87,14 +87,16 @@ impl GoalState {
                 .units
                 .iter()
                 .zip(self.multi.unit_count_goals.iter())
-                .map(|(unit, count)| UnitGoal {
-                    color: unit.color,
-                    copies: *count,
-                    pools: if unit.fourstar_focus {
-                        EnumSet::from(Pool::Focus) | Pool::FourstarFocus
-                    } else {
-                        EnumSet::from(Pool::Focus)
-                    },
+                .filter_map(|(unit, count)| {
+                    Some(UnitGoal {
+                        color: unit.color,
+                        copies: if *count > 0 { *count } else { return None },
+                        pools: if unit.fourstar_focus {
+                            EnumSet::from(Pool::Focus) | Pool::FourstarFocus
+                        } else {
+                            EnumSet::from(Pool::Focus)
+                        },
+                    })
                 })
                 .collect::<Vec<_>>();
             Some(Goal::Quantity(UnitCountGoal::new(
