@@ -93,7 +93,10 @@ impl App {
             let ctx = cc.egui_ctx.clone();
             let current_banner_list = current_banner_list.clone();
             spawn_local(async move {
-                let response = Request::get("https://s3.us-east-1.amazonaws.com/public-files.fullyconcentrated.net/current_banners.json").cache(web_sys::RequestCache::NoCache).send().await;
+                let response = Request::get("https://s3.us-east-1.amazonaws.com/public-files.fullyconcentrated.net/current_banners.json")
+                    .cache(web_sys::RequestCache::NoCache)
+                    .send()
+                    .await;
                 if let Ok(response) = response {
                     let contents = response.json::<Vec<UiBanner>>().await;
                     if let Ok(contents) = contents {
@@ -175,31 +178,42 @@ impl eframe::App for App {
             egui::ScrollArea::both()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    egui::CollapsingHeader::new("WORK IN PROGRESS")
-                        .show(ui, |ui| {
-                            ui.horizontal_wrapped(|ui| {
-                                ui.spacing_mut().item_spacing.x = 0.0;
-                                ui.label("This version of the simulator is incomplete. It has some useful additions, but is also missing some important features that the old one has. You can access the old summon simulator at ");
-                                ui.hyperlink("https://fehstatsim-v1.fullyconcentrated.net/");
-                                ui.label("\nIf you have any comments or suggestions, contact me on reddit at ");
-                                ui.hyperlink_to("/u/minno", "https://www.reddit.com/message/compose?to=minno&subject=new%20fehstatsim%20suggestions");
-                            });
+                    egui::CollapsingHeader::new("WORK IN PROGRESS").show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.spacing_mut().item_spacing.x = 0.0;
+                            ui.label(
+                                "This version of the simulator is incomplete. \
+                                It has some useful additions, but is also missing some \
+                                important features that the old one has. You can access \
+                                the old summon simulator at ",
+                            );
+                            ui.hyperlink("https://fehstatsim-v1.fullyconcentrated.net/");
+                            ui.label(
+                                "\nIf you have any comments or suggestions, \
+                                contact me on reddit at ",
+                            );
+                            ui.hyperlink_to(
+                                "/u/minno",
+                                "https://www.reddit.com/message/compose\
+                                ?to=minno&subject=new%20fehstatsim%20suggestions",
+                            );
                         });
+                    });
 
                     egui::CollapsingHeader::new(RichText::new("Banner").heading())
                         .default_open(true)
-                        .show(ui, |ui| {
-                            match display_banner(ui, banner){
-                                InvalidationResult::NoChange => {},
-                                InvalidationResult::Nothing => {goal.set_banner(banner.current.clone())},
-                                InvalidationResult::ResultsOnly => {bridge.send(SimWorkerInput::Stop);
-                                    results.data = Data::Invalidated;
-                                    goal.set_banner(banner.current.clone())},
-                                InvalidationResult::Everything => {
-                                    bridge.send(SimWorkerInput::Stop);
-                                    results.data = Data::Invalidated;
-                                    *goal = GoalState::new(banner.current.clone(), goal.is_single);
-                                },
+                        .show(ui, |ui| match display_banner(ui, banner) {
+                            InvalidationResult::NoChange => {}
+                            InvalidationResult::Nothing => goal.set_banner(banner.current.clone()),
+                            InvalidationResult::ResultsOnly => {
+                                bridge.send(SimWorkerInput::Stop);
+                                results.data = Data::Invalidated;
+                                goal.set_banner(banner.current.clone())
+                            }
+                            InvalidationResult::Everything => {
+                                bridge.send(SimWorkerInput::Stop);
+                                results.data = Data::Invalidated;
+                                *goal = GoalState::new(banner.current.clone(), goal.is_single);
                             }
                         });
 
